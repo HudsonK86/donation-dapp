@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+/* ============================================================
+   DESIGN TOKENS — Blockchain Donation Platform
+   ============================================================ */
+
+:root {
+  /* Brand colors */
+  --color-primary: #6366f1;       /* Indigo */
+  --color-primary-light: #818cf8;
+  --color-primary-dark: #4f46e5;
+  --color-accent: #06b6d4;        /* Cyan */
+  --color-accent-light: #22d3ee;
+  --color-success: #10b981;       /* Emerald */
+  --color-warning: #f59e0b;       /* Amber */
+  --color-danger: #ef4444;        /* Red */
+
+  /* Surfaces — cool-tinted light palette */
+  --color-bg: #f0f4f8;              /* Slate-tinted off-white */
+  --color-surface: #ffffff;         /* White cards */
+  --color-surface-elevated: #f8fafc; /* Slightly cool elevated surface */
+  --color-border: #e2e8f0;         /* Slate-200 */
+  --color-border-subtle: #cbd5e1;  /* Slate-300 */
+
+  /* Text */
+  --color-text: #0f172a;          /* Slate-900 */
+  --color-text-secondary: #334155; /* Slate-700 */
+  --color-text-muted: #64748b;    /* Slate-500 */
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.Toastify__toast-container {
+  z-index: 999999 !important;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================================
+   GLASSMORPHISM UTILITY
+   ============================================================ */
+
+.glass {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.glass-light {
+  background: rgba(248, 250, 252, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.3);
+}
+
+/* ============================================================
+   GRADIENT UTILITIES
+   ============================================================ */
+
+.gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Section gradient backgrounds for visual layering */
+.section-gradient-hero {
+  background: linear-gradient(180deg, #eef2ff 0%, #f0f4f8 50%, #ecfdf5 100%);
+}
+
+.section-gradient-alt {
+  background: linear-gradient(180deg, #f8fafc 0%, #f0f4ff 50%, #f8fafc 100%);
+}
+
+.section-gradient-footer {
+  background: linear-gradient(180deg, #f0f4f8 0%, #e8ecf4 100%);
+}
+
+/* Card styles with depth */
+.card {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  box-shadow:
+    0 4px 12px rgba(99, 102, 241, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.06);
+  border-color: rgba(99, 102, 241, 0.2);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   ANIMATION UTILITIES
+   ============================================================ */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.2);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0) 0%,
+    rgba(99, 102, 241, 0.05) 50%,
+    rgba(99, 102, 241, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ============================================================
+   SCROLLBAR STYLING
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-subtle);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}

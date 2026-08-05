@@ -1,0 +1,175 @@
+// Prisma schema for the Blockchain Donation Platform
+// Maps to the 7-table ERD design
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+//                          USERS
+// ============================================================
+
+model User {
+  userId        String   @id @default(uuid()) @map("user_id") @db.Uuid
+  role          String   @db.VarChar(30) // 'admin' or 'user'
+  fullName      String?  @map("full_name") @db.VarChar(150)
+  email         String?  @db.VarChar(255)
+  profileBio    String?  @map("profile_bio") @db.Text
+  avatarUrl     String?  @map("avatar_url") @db.VarChar(500)
+  accountStatus String   @default("active") @map("account_status") @db.VarChar(30)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  wallets              Wallet[]
+  createdCampaigns     Campaign[] @relation("CampaignCreator")
+  beneficiaryCampaigns Campaign[] @relation("CampaignBeneficiary")
+  donations            Donation[]
+
+  @@map("users")
+}
+
+// ============================================================
+//                         WALLETS
+// ============================================================
+
+model Wallet {
+  walletId      String   @id @default(uuid()) @map("wallet_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  walletAddress String   @unique @map("wallet_address") @db.VarChar(255)
+  chainId       Int?     @map("chain_id")
+  isPrimary     Boolean  @default(false) @map("is_primary")
+  walletLabel   String?  @map("wallet_label") @db.VarChar(100)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  user                  User       @relation(fields: [userId], references: [userId])
+  beneficiaryCampaigns  Campaign[] @relation("BeneficiaryWallet")
+  donations             Donation[]
+
+  @@map("wallets")
+}
+
+// ============================================================
+//                        CAMPAIGNS
+// ============================================================
+
+model Campaign {
+  campaignId          String    @id @default(uuid()) @map("campaign_id") @db.Uuid
+  onChainCampaignId   BigInt?   @unique @map("on_chain_campaign_id")
+  creatorUserId       String    @map("creator_user_id") @db.Uuid
+  beneficiaryUserId   String?   @map("beneficiary_user_id") @db.Uuid
+  beneficiaryWalletId String?   @map("beneficiary_wallet_id") @db.Uuid
+  campaignTitle       String    @map("campaign_title") @db.VarChar(200)
+  campaignDescription String?   @map("campaign_description") @db.Text
+  targetAmount        Decimal   @map("target_amount") @db.Decimal(18, 2)
+  currentAmountCached Decimal   @default(0) @map("current_amount_cached") @db.Decimal(18, 2)
+  tokenSymbol         String    @default("USDT") @map("token_symbol") @db.VarChar(20)
+  campaignStatus      String    @default("draft") @map("campaign_status") @db.VarChar(30)
+  campaignDeadline    DateTime? @map("campaign_deadline") @db.Timestamptz()
+  createTxHash        String?   @map("create_tx_hash") @db.VarChar(255)
+  publishedAt         DateTime? @map("published_at") @db.Timestamptz()
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  creator           User                    @relation("CampaignCreator", fields: [creatorUserId], references: [userId])
+  beneficiaryUser   User?                   @relation("CampaignBeneficiary", fields: [beneficiaryUserId], references: [userId])
+  beneficiaryWallet Wallet?                 @relation("BeneficiaryWallet", fields: [beneficiaryWalletId], references: [walletId])
+  images            CampaignImage[]
+  statusHistory     CampaignStatusHistory[]
+  donations         Donation[]
+  blockchainEvents  BlockchainEvent[]
+
+  @@map("campaigns")
+}
+
+// ============================================================
+//                     CAMPAIGN IMAGES
+// ============================================================
+
+model CampaignImage {
+  imageId      String   @id @default(uuid()) @map("image_id") @db.Uuid
+  campaignId   String   @map("campaign_id") @db.Uuid
+  imageUrl     String   @map("image_url") @db.VarChar(500)
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  campaign Campaign @relation(fields: [campaignId], references: [campaignId])
+
+  @@map("campaign_images")
+}
+
+// ============================================================
+//                 CAMPAIGN STATUS HISTORY
+// ============================================================
+
+model CampaignStatusHistory {
+  statusHistoryId String   @id @default(uuid()) @map("status_history_id") @db.Uuid
+  campaignId      String   @map("campaign_id") @db.Uuid
+  oldStatus       String?  @map("old_status") @db.VarChar(30)
+  newStatus       String   @map("new_status") @db.VarChar(30)
+  changedAt       DateTime @default(now()) @map("changed_at") @db.Timestamptz()
+
+  // Relations
+  campaign Campaign @relation(fields: [campaignId], references: [campaignId])
+
+  @@map("campaign_status_history")
+}
+
+// ============================================================
+//                        DONATIONS
+// ============================================================
+
+model Donation {
+  donationId     String   @id @default(uuid()) @map("donation_id") @db.Uuid
+  campaignId     String   @map("campaign_id") @db.Uuid
+  donorUserId    String   @map("donor_user_id") @db.Uuid
+  donorWalletId  String   @map("donor_wallet_id") @db.Uuid
+  donationAmount Decimal  @map("donation_amount") @db.Decimal(18, 2)
+  txHash         String   @unique @map("tx_hash") @db.VarChar(255)
+  blockNumber    BigInt?  @map("block_number")
+  donationStatus String   @default("pending") @map("donation_status") @db.VarChar(30)
+  donatedAt      DateTime @map("donated_at") @db.Timestamptz()
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  campaign        Campaign          @relation(fields: [campaignId], references: [campaignId])
+  donorUser       User              @relation(fields: [donorUserId], references: [userId])
+  donorWallet     Wallet            @relation(fields: [donorWalletId], references: [walletId])
+  blockchainEvents BlockchainEvent[]
+
+  @@map("donations")
+}
+
+// ============================================================
+//                    BLOCKCHAIN EVENTS
+// ============================================================
+
+model BlockchainEvent {
+  eventId         String   @id @default(uuid()) @map("event_id") @db.Uuid
+  campaignId      String   @map("campaign_id") @db.Uuid
+  donationId      String?  @map("donation_id") @db.Uuid // Nullable — not all events are tied to a donation
+  eventName       String   @map("event_name") @db.VarChar(100)
+  txHash          String   @map("tx_hash") @db.VarChar(255)
+  logIndex        Int      @map("log_index")
+  blockNumber     BigInt   @map("block_number")
+  contractAddress String   @map("contract_address") @db.VarChar(255)
+  payloadJson     Json?    @map("payload_json") @db.JsonB
+  eventTimestamp  DateTime @map("event_timestamp") @db.Timestamptz()
+  indexedAt       DateTime @default(now()) @map("indexed_at") @db.Timestamptz()
+
+  // Relations
+  campaign Campaign  @relation(fields: [campaignId], references: [campaignId])
+  donation Donation? @relation(fields: [donationId], references: [donationId])
+
+  // Prevent duplicate events
+  @@unique([txHash, logIndex])
+  @@map("blockchain_events")
+}

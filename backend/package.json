@@ -1,0 +1,26 @@
+{
+  "name": "donation-dapp-backend",
+  "version": "1.0.0",
+  "description": "Blockchain Donation Platform - Smart Contracts",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy": "hardhat ignition deploy ignition/modules/DonationEscrow.ts --network localhost && npm run sync:frontend-env",
+    "deploy:local": "hardhat ignition deploy ignition/modules/DonationEscrow.ts --network localhost",
+    "sync:frontend-env": "tsx ./scripts/sync-frontend-env.ts",
+    "clean": "hardhat clean"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-node-test-runner": "^3.1.0",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.7",
+    "@openzeppelin/contracts": "^5.1.0",
+    "@types/node": "^22.0.0",
+    "hardhat": "^3.12.0",
+    "ts-node": "^10.9.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^4.1.10"
+  },
+  "type": "module"
+}
