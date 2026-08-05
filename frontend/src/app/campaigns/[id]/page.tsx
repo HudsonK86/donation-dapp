@@ -4,7 +4,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAppKitAccount } from "@reown/appkit/react";
-import { useDonate, useClaimFunds } from "@/hooks/useContract";
+import { parseEther } from "viem";
+import { useDonate, useClaimFunds, useGetCampaign } from "@/hooks/useContract";
 import { StatusBadge } from "@/components/campaigns/CampaignCard";
 import { AddressDisplay, shortenAddress } from "@/components/ui/AddressDisplay";
 import { toast } from "react-toastify";
@@ -54,6 +55,16 @@ interface Campaign {
   _count: { donations: number };
 }
 
+interface TransactionRow {
+  id: string;
+  eventType: string;
+  fromAddress?: string;
+  amountText: string;
+  txHash: string;
+  dateText: string;
+  sortTime: number;
+}
+
 // -------------------------------------------------------------------
 //  Helpers
 // -------------------------------------------------------------------
@@ -61,6 +72,65 @@ interface Campaign {
 function formatTokenAmount(wei: string | undefined) {
   if (!wei) return "—";
   return (Number(wei) / 1e18).toFixed(4);
+}
+
+function formatDisplayDate(value: string | undefined) {
+  if (!value) return "Date unavailable";
+  return new Date(value).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+function getContractField<T>(value: unknown, field: string, tupleIndex: number) {
+  if (Array.isArray(value)) {
+    return value[tupleIndex] as T | undefined;
+  }
+
+  if (value && typeof value === "object" && field in value) {
+    return (value as Record<string, unknown>)[field] as T | undefined;
+  }
+
+  return undefined;
+}
+
+function buildTransactionRows(campaign: Campaign): TransactionRow[] {
+  const indexedDonationHashes = new Set(
+    campaign.blockchainEvents
+      .filter((event) => event.eventType === "DonationReceived")
+      .map((event) => event.txHash.toLowerCase())
+  );
+
+  const eventRows = campaign.blockchainEvents.map((event) => ({
+    id: `event-${event.eventId}`,
+    eventType: event.eventType,
+    fromAddress: event.fromAddress,
+    amountText: `${formatTokenAmount(event.valueWei)} USDT`,
+    txHash: event.txHash,
+    dateText: formatDisplayDate(event.blockTimestamp),
+    sortTime: event.blockTimestamp
+      ? new Date(event.blockTimestamp).getTime()
+      : 0,
+  }));
+
+  const donationRows = campaign.donations
+    .filter((donation) => !indexedDonationHashes.has(donation.txHash.toLowerCase()))
+    .map((donation) => ({
+      id: `donation-${donation.donationId}`,
+      eventType: "DonationReceived",
+      fromAddress: donation.donorWallet?.walletAddress,
+      amountText: `${Number(donation.donationAmount).toFixed(4)} USDT`,
+      txHash: donation.txHash,
+      dateText: formatDisplayDate(donation.donatedAt),
+      sortTime: new Date(donation.donatedAt).getTime(),
+    }));
+
+  return [...eventRows, ...donationRows].sort((a, b) => b.sortTime - a.sortTime);
 }
 
 // -------------------------------------------------------------------
@@ -80,6 +150,15 @@ export default function CampaignDetailPage() {
   const [amount, setAmount] = useState("");
   const recordedTxRef = useRef<string | null>(null);
   const recordedClaimTxRef = useRef<string | null>(null);
+  const refreshTimersRef = useRef<number[]>([]);
+  const campaignOnChainId = campaign?.onChainCampaignId != null
+    ? BigInt(campaign.onChainCampaignId)
+    : undefined;
+  const {
+    data: onChainCampaign,
+    isLoading: isOnChainLoading,
+    isError: isOnChainError,
+  } = useGetCampaign(campaignOnChainId);
 
   // Fetch campaign data
   const fetchCampaign = useCallback(async () => {
@@ -103,15 +182,36 @@ export default function CampaignDetailPage() {
     return () => window.clearTimeout(timer);
   }, [fetchCampaign]);
 
+  const refetchCampaignNowAndSoon = useCallback(() => {
+    refreshTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    refreshTimersRef.current = [];
+
+    void fetchCampaign();
+
+    for (const delay of [1000, 2500, 5000]) {
+      const timer = window.setTimeout(() => {
+        void fetchCampaign();
+      }, delay);
+      refreshTimersRef.current.push(timer);
+    }
+  }, [fetchCampaign]);
+
+  useEffect(() => {
+    return () => {
+      refreshTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, []);
+
   // Record donation on success
   useEffect(() => {
     if (isSuccess && hash && hash !== recordedTxRef.current && address) {
       recordedTxRef.current = hash;
+      const submittedAmount = amount;
       
       toast.success(
         <div>
           ✅ Donation confirmed!<br />
-          <span className="font-mono text-[10px]">Tx: {shortenAddress(hash)}</span>
+          <span className="font-mono text-[10px]">Transaction: {shortenAddress(hash)}</span>
         </div>
       );
 
@@ -135,28 +235,34 @@ export default function CampaignDetailPage() {
               campaignId,
               donorUserId: userData.user.userId,
               donorWalletId: userData.wallet.walletId,
-              donationAmount: amount,
+              donationAmount: submittedAmount,
               txHash: hash,
             }),
           });
 
-          // 3. Refetch campaign
-          fetchCampaign();
+          setAmount("");
+          refetchCampaignNowAndSoon();
         } catch (err) {
           console.error("Failed to record donation in DB:", err);
+          setAmount("");
+          refetchCampaignNowAndSoon();
         }
       };
 
       recordDonation();
     }
-  }, [isSuccess, hash, address, amount, campaignId, fetchCampaign]);
+  }, [isSuccess, hash, address, amount, campaignId, refetchCampaignNowAndSoon]);
 
   // Handle errors
   useEffect(() => {
     if (error) {
       toast.error(`Transaction failed: ${error.message.slice(0, 100)}`);
+      window.setTimeout(() => {
+        setAmount("");
+        refetchCampaignNowAndSoon();
+      }, 0);
     }
-  }, [error]);
+  }, [error, refetchCampaignNowAndSoon]);
 
   useEffect(() => {
     if (claimError) {
@@ -171,7 +277,7 @@ export default function CampaignDetailPage() {
       toast.success(
         <div>
           ✅ Claim transaction confirmed!<br />
-          <span className="font-mono text-[10px]">Tx: {shortenAddress(claimHash)}</span>
+          <span className="font-mono text-[10px]">Transaction: {shortenAddress(claimHash)}</span>
         </div>
       );
       const timer = setTimeout(() => fetchCampaign(), 2000);
@@ -179,16 +285,62 @@ export default function CampaignDetailPage() {
     }
   }, [isClaimSuccess, claimHash, fetchCampaign]);
 
+  const onChainTargetAmount = getContractField<bigint>(
+    onChainCampaign,
+    "targetAmount",
+    3
+  );
+  const onChainBeneficiary = getContractField<string>(
+    onChainCampaign,
+    "beneficiary",
+    2
+  );
+  const onChainIsActive = getContractField<boolean>(
+    onChainCampaign,
+    "isActive",
+    6
+  );
+  const onChainIsReleased = getContractField<boolean>(
+    onChainCampaign,
+    "isReleased",
+    7
+  );
+  const expectedTargetAmount = campaign
+    ? parseEther(String(campaign.targetAmount))
+    : undefined;
+  const expectedBeneficiary = campaign?.beneficiaryWallet?.walletAddress?.toLowerCase();
+  const isOnChainDifferent =
+    !!onChainCampaign &&
+    ((expectedTargetAmount !== undefined &&
+      onChainTargetAmount !== undefined &&
+      onChainTargetAmount !== expectedTargetAmount) ||
+      (!!expectedBeneficiary &&
+        !!onChainBeneficiary &&
+        onChainBeneficiary.toLowerCase() !== expectedBeneficiary));
+  const onChainAvailabilityMessage =
+    campaign?.onChainCampaignId == null
+      ? "This campaign is not yet on-chain."
+      : isOnChainLoading
+        ? "Checking current smart contract campaign..."
+        : isOnChainError || isOnChainDifferent
+          ? "This database campaign is no longer linked to the current local Hardhat chain. Go back to Campaigns and open the newly created campaign."
+          : onChainIsReleased
+            ? "Funds have already been released on chain."
+            : onChainIsActive === false
+              ? "This campaign is not active on chain."
+              : null;
+
   // Handle donate
   const handleDonate = () => {
     if (!amount || parseFloat(amount) <= 0) {
       toast.error("Please enter a valid amount.");
       return;
     }
-    if (campaign?.onChainCampaignId == null) {
-      toast.error("This campaign is not yet on-chain.");
+    if (onChainAvailabilityMessage) {
+      toast.error(onChainAvailabilityMessage);
       return;
     }
+    if (campaign?.onChainCampaignId == null) return;
     donate(BigInt(campaign.onChainCampaignId), amount);
   };
 
@@ -234,6 +386,10 @@ export default function CampaignDetailPage() {
   const isDeadlinePassed = campaign.campaignDeadline
     ? new Date() > new Date(campaign.campaignDeadline)
     : false;
+  const transactionRows = buildTransactionRows(campaign);
+  const releasedDateText = transactionRows.find(
+    (transaction) => transaction.eventType === "FundsReleased"
+  )?.dateText;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
@@ -322,67 +478,48 @@ export default function CampaignDetailPage() {
           <div className="card p-8">
             <h2 className="text-lg font-semibold text-slate-900 mb-6">Transaction History</h2>
 
-            {campaign.blockchainEvents.length === 0 && campaign.donations.length === 0 ? (
+            {transactionRows.length === 0 ? (
               <p className="text-center text-sm text-slate-400 py-8">
                 No transactions recorded yet.
               </p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="max-h-[530px] overflow-auto pr-1">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="sticky top-0 z-10 bg-white">
                     <tr className="border-b border-slate-100 text-left text-slate-400">
                       <th className="pb-3 font-medium">Event</th>
                       <th className="pb-3 font-medium">From</th>
                       <th className="pb-3 font-medium">Amount</th>
-                      <th className="pb-3 font-medium">Tx Hash</th>
+                      <th className="pb-3 font-medium">Transaction Hash</th>
                     </tr>
                   </thead>
                   <tbody className="text-slate-600">
-                    {campaign.blockchainEvents.map((event) => (
-                      <tr key={event.eventId} className="border-b border-slate-50">
+                    {transactionRows.map((transaction) => (
+                      <tr key={transaction.id} className="border-b border-slate-50">
                         <td className="py-3">
-                          <EventBadge type={event.eventType} />
+                          <EventBadge type={transaction.eventType} />
+                          <p className="mt-1 text-[11px] text-slate-400">
+                            {transaction.dateText}
+                          </p>
                         </td>
                         <td className="py-3 text-xs">
                           <AddressDisplay
-                            address={event.fromAddress}
+                            address={transaction.fromAddress}
                             kind="wallet"
                             className="text-slate-600"
                           />
                         </td>
                         <td className="py-3">
-                          {formatTokenAmount(event.valueWei)} USDT
+                          {transaction.amountText}
                         </td>
                         <td className="py-3 text-xs text-indigo-500">
                           <AddressDisplay
-                            address={event.txHash}
+                            address={transaction.txHash}
                             kind="transaction"
                           />
                         </td>
                       </tr>
                     ))}
-                    {campaign.blockchainEvents.length === 0 &&
-                      campaign.donations.map((d) => (
-                        <tr key={d.donationId} className="border-b border-slate-50">
-                          <td className="py-3">
-                            <EventBadge type="DonationReceived" />
-                          </td>
-                          <td className="py-3 text-xs">
-                            <AddressDisplay
-                              address={d.donorWallet?.walletAddress}
-                              kind="wallet"
-                              className="text-slate-600"
-                            />
-                          </td>
-                          <td className="py-3">{Number(d.donationAmount).toFixed(4)} USDT</td>
-                          <td className="py-3 text-xs text-indigo-500">
-                            <AddressDisplay
-                              address={d.txHash}
-                              kind="transaction"
-                            />
-                          </td>
-                        </tr>
-                      ))}
                   </tbody>
                 </table>
               </div>
@@ -425,7 +562,7 @@ export default function CampaignDetailPage() {
                 <p className="text-xs text-slate-500">Donations</p>
               </div>
               <div className="rounded-lg bg-slate-50 p-3 text-center">
-                <p className="text-lg font-bold text-slate-900">{campaign.blockchainEvents.length}</p>
+                <p className="text-lg font-bold text-slate-900">{transactionRows.length}</p>
                 <p className="text-xs text-slate-500">Transactions</p>
               </div>
             </div>
@@ -433,6 +570,12 @@ export default function CampaignDetailPage() {
             {/* Donate Form */}
             {campaign.campaignStatus === "active" && !isDeadlinePassed && (
               <div className="space-y-4">
+                {onChainAvailabilityMessage && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-700">
+                    {onChainAvailabilityMessage}
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs text-slate-500 mb-1.5">
                     Donation Amount (USDT)
@@ -452,11 +595,18 @@ export default function CampaignDetailPage() {
 
                 <button
                   onClick={handleDonate}
-                  disabled={!isConnected || isPending || isConfirming}
+                  disabled={
+                    !isConnected ||
+                    isPending ||
+                    isConfirming ||
+                    Boolean(onChainAvailabilityMessage)
+                  }
                   className="w-full rounded-xl bg-indigo-500 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {!isConnected
                     ? "Connect Wallet to Donate"
+                    : onChainAvailabilityMessage
+                    ? "Campaign Unavailable"
                     : isPending
                     ? "Confirm in Wallet..."
                     : isConfirming
@@ -501,7 +651,8 @@ export default function CampaignDetailPage() {
               <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 text-center">
                 <p className="text-sm font-medium text-indigo-700">✅ Funds Released</p>
                 <p className="text-xs text-indigo-600 mt-1">
-                  All funds have been released to the beneficiary.
+                  All funds have been released to the beneficiary
+                  {releasedDateText ? ` on ${releasedDateText}.` : "."}
                 </p>
               </div>
             )}
@@ -522,11 +673,19 @@ const eventStyles: Record<string, string> = {
   FundsReleased: "bg-indigo-50 text-indigo-600",
 };
 
+const eventLabels: Record<string, string> = {
+  CampaignCreated: "Campaign Created",
+  DonationReceived: "Donation Received",
+  FundsReleased: "Funds Released",
+};
+
 function EventBadge({ type }: { type: string }) {
   const style = eventStyles[type] || "bg-slate-50 text-slate-500";
+  const label = eventLabels[type] || type;
+
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${style}`}>
-      {type}
+      {label}
     </span>
   );
 }

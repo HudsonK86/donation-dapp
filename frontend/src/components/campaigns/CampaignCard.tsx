@@ -10,6 +10,7 @@ interface CampaignCardProps {
   status: string;
   donationCount: number;
   tokenSymbol?: string;
+  deadline?: string | null;
 }
 
 export function CampaignCard({
@@ -22,6 +23,7 @@ export function CampaignCard({
   status,
   donationCount,
   tokenSymbol = "USDT",
+  deadline,
 }: CampaignCardProps) {
   const progress = targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;
   const clampedProgress = Math.min(progress, 100);
@@ -29,11 +31,12 @@ export function CampaignCard({
   return (
     <Link
       href={`/campaigns/${campaignId}`}
-      className="group block card overflow-hidden"
+      className="group flex h-full flex-col card overflow-hidden"
     >
       {/* Image */}
       <div className="h-48 bg-slate-100 relative overflow-hidden">
         {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imageUrl}
             alt={title}
@@ -46,16 +49,20 @@ export function CampaignCard({
         )}
       </div>
 
-      <div className="p-6">
+      <div className="flex flex-1 flex-col p-6">
         {/* Title */}
-        <h3 className="text-lg font-semibold mb-2 text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+        <h3 className="mb-2 min-h-[3.5rem] text-lg font-semibold leading-7 text-slate-900 transition-colors line-clamp-2 group-hover:text-indigo-600">
           {title}
         </h3>
 
         {/* Description */}
-        {description && (
-          <p className="text-sm text-slate-500 mb-4 line-clamp-2">{description}</p>
-        )}
+        <p
+          className={`mb-4 min-h-10 text-sm leading-5 text-slate-500 line-clamp-2 ${
+            description ? "" : "invisible"
+          }`}
+        >
+          {description || "No description provided."}
+        </p>
 
         {/* Progress Bar */}
         <div className="mb-4">
@@ -78,14 +85,33 @@ export function CampaignCard({
           </p>
         </div>
 
+        {/* Deadline */}
+        <div className="mb-4 rounded-lg bg-slate-50 px-3 py-2">
+          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-slate-400">
+            Deadline
+          </p>
+          <p className="mt-0.5 text-xs font-medium text-slate-600">
+            {formatDeadline(deadline)}
+          </p>
+        </div>
+
         {/* Footer */}
-        <div className="flex items-center justify-between">
+        <div className="mt-auto flex items-center justify-between">
           <StatusBadge status={status} />
           <span className="text-xs text-slate-500">{donationCount} donations</span>
         </div>
       </div>
     </Link>
   );
+}
+
+function formatDeadline(deadline: string | null | undefined) {
+  if (!deadline) return "No deadline";
+
+  const date = new Date(deadline);
+  if (Number.isNaN(date.getTime())) return "No deadline";
+
+  return date.toLocaleDateString("en-GB");
 }
 
 // ============================================================
@@ -96,6 +122,8 @@ const statusStyles: Record<string, string> = {
   draft: "bg-slate-500/10 text-slate-500",
   active: "bg-emerald-500/10 text-emerald-600",
   released: "bg-indigo-500/10 text-indigo-600",
+  cancelled: "bg-slate-500/10 text-slate-500",
+  archived: "bg-slate-500/10 text-slate-500",
   confirmed: "bg-slate-500/10 text-slate-500",
 };
 

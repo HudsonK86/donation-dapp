@@ -10,6 +10,12 @@ const contractConfig = {
   abi: DONATION_ESCROW_ABI,
 } as const;
 
+const CREATE_CAMPAIGN_GAS = BigInt(500_000);
+const DONATE_GAS = BigInt(200_000);
+const CLAIM_FUNDS_GAS = BigInt(200_000);
+const UPDATE_CAMPAIGN_TERMS_GAS = BigInt(300_000);
+const CANCEL_CAMPAIGN_GAS = BigInt(200_000);
+
 // ============================================================
 //                      READ HOOKS
 // ============================================================
@@ -53,6 +59,7 @@ export function useCreateCampaign() {
       ...contractConfig,
       functionName: "createCampaign",
       args: [beneficiary as `0x${string}`, parseEther(targetAmountEth), BigInt(deadlineSeconds)],
+      gas: CREATE_CAMPAIGN_GAS,
     });
   };
 
@@ -80,6 +87,7 @@ export function useDonate() {
       functionName: "donateToCampaign",
       args: [campaignId],
       value: parseEther(amountEth),
+      gas: DONATE_GAS,
     });
   };
 
@@ -108,6 +116,7 @@ export function useClaimFunds() {
       ...contractConfig,
       functionName: "claimFunds",
       args: [campaignId],
+      gas: CLAIM_FUNDS_GAS,
     });
   };
 
@@ -117,6 +126,62 @@ export function useClaimFunds() {
     isPending,
     isConfirming,
     isSuccess,
+    error,
+  };
+}
+
+/**
+ * Update a campaign's on-chain terms before any donation is received
+ */
+export function useUpdateCampaignTerms() {
+  const { data: hash, writeContractAsync, isPending, error } = useWriteContract();
+
+  const updateCampaignTerms = (
+    campaignId: bigint,
+    beneficiary: string,
+    targetAmountEth: string,
+    deadlineSeconds: number
+  ) => {
+    return writeContractAsync({
+      ...contractConfig,
+      functionName: "updateCampaignTerms",
+      args: [
+        campaignId,
+        beneficiary as `0x${string}`,
+        parseEther(targetAmountEth),
+        BigInt(deadlineSeconds),
+      ],
+      gas: UPDATE_CAMPAIGN_TERMS_GAS,
+    });
+  };
+
+  return {
+    updateCampaignTerms,
+    hash,
+    isPending,
+    error,
+  };
+}
+
+/**
+ * Cancel a campaign before any donation is received
+ */
+export function useCancelCampaign() {
+  const { data: hash, writeContractAsync, isPending, error } = useWriteContract();
+
+  const cancelCampaign = (campaignId: bigint) => {
+    return writeContractAsync({
+      ...contractConfig,
+      functionName: "cancelCampaign",
+      args: [campaignId],
+      gas: CANCEL_CAMPAIGN_GAS,
+    });
+  };
+
+  return {
+    cancelCampaign,
+    hash,
+    isPending,
     error,
   };
 }

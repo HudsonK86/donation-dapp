@@ -79,10 +79,10 @@ export async function GET(request: NextRequest) {
 
     const formattedDonations = recentDonations.map((d) => ({
       donationId: d.donationId,
+      campaignId: d.campaignId,
       campaignTitle: d.campaign.campaignTitle,
       amount: Number(d.donationAmount),
       tokenSymbol: "USDT",
-      status: d.donationStatus,
       txHash: d.txHash,
       date: d.createdAt.toISOString(),
     }));
@@ -93,6 +93,16 @@ export async function GET(request: NextRequest) {
       include: {
         donations: {
           select: { donationAmount: true },
+        },
+        blockchainEvents: {
+          where: { eventName: "FundsReleased" },
+          orderBy: { eventTimestamp: "desc" },
+          take: 1,
+        },
+        statusHistory: {
+          where: { newStatus: { in: ["released", "funded"] } },
+          orderBy: { changedAt: "desc" },
+          take: 1,
         },
       },
       orderBy: { createdAt: "desc" },
@@ -110,7 +120,12 @@ export async function GET(request: NextRequest) {
         currentAmount: totalDonated,
         tokenSymbol: "USDT",
         status: toPublicCampaignStatus(c.campaignStatus),
+        createdAt: c.createdAt.toISOString(),
         deadline: c.campaignDeadline ? c.campaignDeadline.toISOString() : null,
+        releasedAt:
+          c.blockchainEvents[0]?.eventTimestamp.toISOString() ??
+          c.statusHistory[0]?.changedAt.toISOString() ??
+          null,
       };
     });
 

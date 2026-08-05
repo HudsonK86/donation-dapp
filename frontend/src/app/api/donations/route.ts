@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/donations
- * Record a donation (called after on-chain tx is confirmed)
+ * Record a donation (called after on-chain transaction is confirmed)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for duplicate tx hash
+    // Check for duplicate transaction hash
     const existing = await prisma.donation.findUnique({
       where: { txHash },
     });

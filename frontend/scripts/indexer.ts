@@ -6,6 +6,8 @@
  *
  * Events monitored:
  *   - CampaignCreated
+ *   - CampaignUpdated
+ *   - CampaignCancelled
  *   - DonationReceived
  *   - FundsReleased
  *
@@ -14,7 +16,14 @@
  */
 
 import "dotenv/config";
-import { createPublicClient, decodeEventLog, http, type Log } from "viem";
+import {
+  createPublicClient,
+  decodeEventLog,
+  formatEther,
+  getAddress,
+  http,
+  type Log,
+} from "viem";
 import { hardhat } from "viem/chains";
 import { PrismaClient } from "@prisma/client";
 import { DONATION_ESCROW_ABI } from "../src/utils/contract";
@@ -76,6 +85,47 @@ async function findDonationByTxHash(txHash: string) {
   return null;
 }
 
+async function resolveBeneficiaryWallet(walletAddress: string) {
+  const normalizedAddress = getAddress(walletAddress).toLowerCase();
+
+  const existingWallet = await prisma.wallet.findUnique({
+    where: { walletAddress: normalizedAddress },
+    select: { walletId: true, userId: true },
+  });
+
+  if (existingWallet) {
+    return {
+      beneficiaryUserId: existingWallet.userId,
+      beneficiaryWalletId: existingWallet.walletId,
+    };
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      role: "user",
+      accountStatus: "active",
+      wallets: {
+        create: {
+          walletAddress: normalizedAddress,
+          chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID || 31337),
+          isPrimary: true,
+        },
+      },
+    },
+    include: {
+      wallets: {
+        where: { walletAddress: normalizedAddress },
+        take: 1,
+      },
+    },
+  });
+
+  return {
+    beneficiaryUserId: user.userId,
+    beneficiaryWalletId: user.wallets[0]?.walletId ?? null,
+  };
+}
+
 // ============================================================
 //                    EVENT HANDLERS
 // ============================================================
@@ -93,12 +143,12 @@ async function handleCampaignCreated(log: ContractEventLog) {
 
   try {
     if (!log.transactionHash || log.logIndex == null || log.blockNumber == null) {
-      console.log("  ⚠️ CampaignCreated log is missing tx metadata; skipping");
+      console.log("  ⚠️ CampaignCreated log is missing transaction metadata; skipping");
       return;
     }
 
     // Campaign IDs restart from 1 whenever the local Hardhat node is reset.
-    // The create tx hash is the stable link between this event and the DB row.
+    // The create transaction hash is the stable link between this event and the DB row.
     const campaign = await findCampaignByCreateTxHash(log.transactionHash);
 
     if (campaign) {
@@ -151,10 +201,151 @@ async function handleCampaignCreated(log: ContractEventLog) {
 
       console.log(`  ✅ Indexed CampaignCreated event for campaign ${updatedCampaign.campaignId}`);
     } else {
-      console.log(`  ⚠️ No matching off-chain campaign found for create tx ${log.transactionHash}`);
+      console.log(`  ⚠️ No matching off-chain campaign found for create transaction ${log.transactionHash}`);
     }
   } catch (error) {
     console.error("  ❌ Error handling CampaignCreated:", error);
+  }
+}
+
+async function handleCampaignUpdated(log: ContractEventLog) {
+  const { campaignId, beneficiary, targetAmount, deadline } = log.args as {
+    campaignId: bigint;
+    beneficiary: string;
+    targetAmount: bigint;
+    deadline: bigint;
+  };
+
+  console.log(`✏️ CampaignUpdated — ID: ${campaignId}, Beneficiary: ${beneficiary}`);
+
+  try {
+    if (!log.transactionHash || log.logIndex == null || log.blockNumber == null) {
+      console.log("  ⚠️ CampaignUpdated log is missing transaction metadata; skipping");
+      return;
+    }
+
+    const campaign = await prisma.campaign.findUnique({
+      where: { onChainCampaignId: campaignId },
+    });
+
+    if (!campaign) {
+      console.log(`  ⚠️ No matching campaign for on-chain ID ${campaignId}`);
+      return;
+    }
+
+    const beneficiaryWallet = await resolveBeneficiaryWallet(beneficiary);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.campaign.update({
+        where: { campaignId: campaign.campaignId },
+        data: {
+          beneficiaryUserId: beneficiaryWallet.beneficiaryUserId,
+          beneficiaryWalletId: beneficiaryWallet.beneficiaryWalletId,
+          targetAmount: Number(formatEther(targetAmount)),
+          campaignDeadline: new Date(Number(deadline) * 1000),
+        },
+      });
+
+      await tx.blockchainEvent.upsert({
+        where: {
+          txHash_logIndex: {
+            txHash: log.transactionHash!,
+            logIndex: log.logIndex!,
+          },
+        },
+        update: {},
+        create: {
+          campaignId: campaign.campaignId,
+          eventName: "CampaignUpdated",
+          txHash: log.transactionHash!,
+          logIndex: log.logIndex!,
+          blockNumber: log.blockNumber!,
+          contractAddress: CONTRACT_ADDRESS,
+          payloadJson: {
+            campaignId: campaignId.toString(),
+            beneficiary,
+            targetAmount: targetAmount.toString(),
+            deadline: deadline.toString(),
+          },
+          eventTimestamp: new Date(),
+        },
+      });
+    });
+
+    console.log(`  ✅ Indexed CampaignUpdated event for campaign ${campaign.campaignId}`);
+  } catch (error) {
+    console.error("  ❌ Error handling CampaignUpdated:", error);
+  }
+}
+
+async function handleCampaignCancelled(log: ContractEventLog) {
+  const { campaignId, admin } = log.args as {
+    campaignId: bigint;
+    admin: string;
+  };
+
+  console.log(`🛑 CampaignCancelled — ID: ${campaignId}, Admin: ${admin}`);
+
+  try {
+    if (!log.transactionHash || log.logIndex == null || log.blockNumber == null) {
+      console.log("  ⚠️ CampaignCancelled log is missing transaction metadata; skipping");
+      return;
+    }
+
+    const campaign = await prisma.campaign.findUnique({
+      where: { onChainCampaignId: campaignId },
+    });
+
+    if (!campaign) {
+      console.log(`  ⚠️ No matching campaign for on-chain ID ${campaignId}`);
+      return;
+    }
+
+    const oldStatus = campaign.campaignStatus;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.campaign.update({
+        where: { campaignId: campaign.campaignId },
+        data: { campaignStatus: "cancelled" },
+      });
+
+      if (oldStatus !== "cancelled") {
+        await tx.campaignStatusHistory.create({
+          data: {
+            campaignId: campaign.campaignId,
+            oldStatus,
+            newStatus: "cancelled",
+          },
+        });
+      }
+
+      await tx.blockchainEvent.upsert({
+        where: {
+          txHash_logIndex: {
+            txHash: log.transactionHash!,
+            logIndex: log.logIndex!,
+          },
+        },
+        update: {},
+        create: {
+          campaignId: campaign.campaignId,
+          eventName: "CampaignCancelled",
+          txHash: log.transactionHash!,
+          logIndex: log.logIndex!,
+          blockNumber: log.blockNumber!,
+          contractAddress: CONTRACT_ADDRESS,
+          payloadJson: {
+            campaignId: campaignId.toString(),
+            admin,
+          },
+          eventTimestamp: new Date(),
+        },
+      });
+    });
+
+    console.log(`  ✅ Indexed CampaignCancelled event for campaign ${campaign.campaignId}`);
+  } catch (error) {
+    console.error("  ❌ Error handling CampaignCancelled:", error);
   }
 }
 
@@ -170,14 +361,14 @@ async function handleDonationReceived(log: ContractEventLog) {
 
   try {
     if (!log.transactionHash || log.logIndex == null || log.blockNumber == null) {
-      console.log("  ⚠️ DonationReceived log is missing tx metadata; skipping");
+      console.log("  ⚠️ DonationReceived log is missing transaction metadata; skipping");
       return;
     }
 
     const donation = await findDonationByTxHash(log.transactionHash);
 
     if (!donation) {
-      console.log(`  ⚠️ No matching off-chain donation found for tx ${log.transactionHash}`);
+      console.log(`  ⚠️ No matching off-chain donation found for transaction ${log.transactionHash}`);
       return;
     }
 
@@ -317,6 +508,12 @@ async function handleDonationEscrowLog(log: Log) {
     switch (decoded.eventName) {
       case "CampaignCreated":
         await handleCampaignCreated(parsedLog);
+        break;
+      case "CampaignUpdated":
+        await handleCampaignUpdated(parsedLog);
+        break;
+      case "CampaignCancelled":
+        await handleCampaignCancelled(parsedLog);
         break;
       case "DonationReceived":
         await handleDonationReceived(parsedLog);

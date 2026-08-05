@@ -87,6 +87,30 @@ npm run dev
 npm run indexer
 ```
 
+### Local Reset After Restarting Hardhat
+
+Hardhat local blockchain state is in-memory. If you stop and rerun the Hardhat
+node, the deployed contract and on-chain campaigns start fresh, while PostgreSQL
+still keeps the old records. Reset the local database after each fresh Hardhat
+restart so database campaign IDs stay aligned with the current smart contract.
+
+```bash
+# Terminal 1: start a fresh local chain
+cd backend
+npm run node
+
+# Terminal 2: deploy the fresh contract
+cd backend
+npm run deploy
+
+# Terminal 3: reset local DB and recreate the admin wallet
+cd frontend
+npm run db:reset:local
+
+# Terminal 3: run the app and indexer
+npm run dev:all
+```
+
 ### 6. Access the App
 
 - **App**: http://localhost:3000

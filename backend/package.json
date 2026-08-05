@@ -6,8 +6,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "node": "hardhat node",
-    "deploy": "hardhat ignition deploy ignition/modules/DonationEscrow.ts --network localhost && npm run sync:frontend-env",
-    "deploy:local": "hardhat ignition deploy ignition/modules/DonationEscrow.ts --network localhost",
+    "deploy": "hardhat ignition deploy ignition/modules/DonationEscrow.ts --network localhost --reset && npm run sync:frontend-env",
+    "deploy:local": "hardhat ignition deploy ignition/modules/DonationEscrow.ts --network localhost --reset",
     "sync:frontend-env": "tsx ./scripts/sync-frontend-env.ts",
     "clean": "hardhat clean"
   },

@@ -29,6 +29,24 @@ const publicClient = createPublicClient({
   transport: http(config.rpcUrl),
 });
 
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getDefaultDeadlineDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 30);
+  return toDateInputValue(date);
+}
+
+function getDeadlineIso(dateValue: string) {
+  return new Date(`${dateValue}T23:59:59`).toISOString();
+}
+
 async function waitForReceipt(txHash: Hash) {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
@@ -102,7 +120,7 @@ export function CreateCampaignModal({
   const [description, setDescription] = useState("");
   const [beneficiary, setBeneficiary] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
-  const [durationDays, setDurationDays] = useState("30");
+  const [deadlineDate, setDeadlineDate] = useState(getDefaultDeadlineDate);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
@@ -226,7 +244,7 @@ export function CreateCampaignModal({
     });
   };
 
-  // Save to DB once on-chain tx succeeds
+  // Save to DB once on-chain transaction succeeds
   const saveToDatabase = async (
     txHash: string,
     finalImageUrl: string | null,
@@ -290,9 +308,15 @@ export function CreateCampaignModal({
       return;
     }
 
-    const durationDayCount = Number(durationDays);
-    if (!Number.isInteger(durationDayCount) || durationDayCount <= 0) {
-      setFormError("Duration must be at least 1 day.");
+    if (!deadlineDate) {
+      setFormError("Campaign deadline is required.");
+      return;
+    }
+
+    const deadlineIso = getDeadlineIso(deadlineDate);
+    const deadline = new Date(deadlineIso);
+    if (deadline <= new Date()) {
+      setFormError("Campaign deadline must be in the future.");
       return;
     }
 
@@ -331,7 +355,7 @@ export function CreateCampaignModal({
     }
 
     const normalizedBeneficiary = getAddress(beneficiary.trim());
-    const deadlineSeconds = Math.floor(Date.now() / 1000) + durationDayCount * 86400;
+    const deadlineSeconds = Math.floor(deadline.getTime() / 1000);
 
     try {
       const txHash = await createCampaign(
@@ -410,7 +434,7 @@ export function CreateCampaignModal({
     setDescription("");
     setBeneficiary("");
     setTargetAmount("");
-    setDurationDays("30");
+    setDeadlineDate(getDefaultDeadlineDate());
     setFile(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
@@ -472,6 +496,7 @@ export function CreateCampaignModal({
               </label>
               {previewUrl && (
                 <div className="h-24 w-24 rounded-xl overflow-hidden shadow-sm shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
                 </div>
               )}
@@ -523,18 +548,15 @@ export function CreateCampaignModal({
               />
             </div>
 
-            {/* Duration */}
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1.5">
-                Duration (Days) *
+                Deadline *
               </label>
               <input
-                type="number"
-                step="1"
-                min="1"
-                value={durationDays}
-                onChange={(e) => setDurationDays(e.target.value)}
-                placeholder="30"
+                type="date"
+                min={toDateInputValue(new Date())}
+                value={deadlineDate}
+                onChange={(e) => setDeadlineDate(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
               />
             </div>

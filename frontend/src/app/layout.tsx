@@ -25,8 +25,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="min-h-screen font-sans antialiased" style={{ background: 'var(--color-bg)', color: 'var(--color-text)' }}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        className="min-h-screen font-sans antialiased"
+        style={{ background: "var(--color-bg)", color: "var(--color-text)" }}
+      >
         <Web3Provider>
           <AddressProfileProvider>
             <WalletAuth />

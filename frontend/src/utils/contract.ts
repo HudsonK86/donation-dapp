@@ -38,6 +38,27 @@ export const DONATION_ESCROW_ABI = [
     outputs: [],
     stateMutability: "payable",
   },
+  {
+    type: "function",
+    name: "updateCampaignTerms",
+    inputs: [
+      { name: "_campaignId", type: "uint256", internalType: "uint256" },
+      { name: "_beneficiary", type: "address", internalType: "address payable" },
+      { name: "_targetAmount", type: "uint256", internalType: "uint256" },
+      { name: "_deadline", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "cancelCampaign",
+    inputs: [
+      { name: "_campaignId", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
 
   // ============================================================
   //                      VIEW FUNCTIONS
@@ -62,6 +83,7 @@ export const DONATION_ESCROW_ABI = [
           { name: "deadline", type: "uint256", internalType: "uint256" },
           { name: "isActive", type: "bool", internalType: "bool" },
           { name: "isReleased", type: "bool", internalType: "bool" },
+          { name: "isCancelled", type: "bool", internalType: "bool" },
         ],
       },
     ],
@@ -87,6 +109,7 @@ export const DONATION_ESCROW_ABI = [
       { name: "deadline", type: "uint256", internalType: "uint256" },
       { name: "isActive", type: "bool", internalType: "bool" },
       { name: "isReleased", type: "bool", internalType: "bool" },
+      { name: "isCancelled", type: "bool", internalType: "bool" },
     ],
     stateMutability: "view",
   },
@@ -127,6 +150,26 @@ export const DONATION_ESCROW_ABI = [
     ],
     anonymous: false,
   },
+  {
+    type: "event",
+    name: "CampaignUpdated",
+    inputs: [
+      { name: "campaignId", type: "uint256", indexed: true, internalType: "uint256" },
+      { name: "beneficiary", type: "address", indexed: true, internalType: "address" },
+      { name: "targetAmount", type: "uint256", indexed: false, internalType: "uint256" },
+      { name: "deadline", type: "uint256", indexed: false, internalType: "uint256" },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "CampaignCancelled",
+    inputs: [
+      { name: "campaignId", type: "uint256", indexed: true, internalType: "uint256" },
+      { name: "admin", type: "address", indexed: true, internalType: "address" },
+    ],
+    anonymous: false,
+  },
 
   // ============================================================
   //                         ERRORS
@@ -138,4 +181,7 @@ export const DONATION_ESCROW_ABI = [
   { type: "error", name: "InvalidBeneficiary", inputs: [] },
   { type: "error", name: "InvalidTargetAmount", inputs: [] },
   { type: "error", name: "DonationAmountZero", inputs: [] },
+  { type: "error", name: "NotCampaignAdmin", inputs: [{ name: "campaignId", type: "uint256" }] },
+  { type: "error", name: "CampaignHasDonations", inputs: [{ name: "campaignId", type: "uint256" }] },
+  { type: "error", name: "CampaignCancelledError", inputs: [{ name: "campaignId", type: "uint256" }] },
 ] as const;

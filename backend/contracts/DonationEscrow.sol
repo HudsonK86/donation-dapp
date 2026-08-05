@@ -24,6 +24,7 @@ contract DonationEscrow is Ownable, ReentrancyGuard {
         uint256 deadline;
         bool isActive;
         bool isReleased;
+        bool isCancelled;
     }
 
     // ============================================================
@@ -64,6 +65,20 @@ contract DonationEscrow is Ownable, ReentrancyGuard {
         uint256 totalAmount
     );
 
+    /// @dev Emitted when campaign terms are updated before any donation is received
+    event CampaignUpdated(
+        uint256 indexed campaignId,
+        address indexed beneficiary,
+        uint256 targetAmount,
+        uint256 deadline
+    );
+
+    /// @dev Emitted when a campaign is cancelled before any donation is received
+    event CampaignCancelled(
+        uint256 indexed campaignId,
+        address indexed admin
+    );
+
     // ============================================================
     //                          ERRORS
     // ============================================================
@@ -75,6 +90,9 @@ contract DonationEscrow is Ownable, ReentrancyGuard {
     error InvalidBeneficiary();
     error InvalidTargetAmount();
     error DonationAmountZero();
+    error NotCampaignAdmin(uint256 campaignId);
+    error CampaignHasDonations(uint256 campaignId);
+    error CampaignCancelledError(uint256 campaignId);
 
     // ============================================================
     //                        CONSTRUCTOR
@@ -115,7 +133,8 @@ contract DonationEscrow is Ownable, ReentrancyGuard {
             totalDonated: 0,
             deadline: _deadline,
             isActive: true,
-            isReleased: false
+            isReleased: false,
+            isCancelled: false
         });
 
         emit CampaignCreated(campaignId, msg.sender, _beneficiary, _targetAmount, _deadline);
@@ -135,6 +154,7 @@ contract DonationEscrow is Ownable, ReentrancyGuard {
         if (campaign.targetAmount == 0) revert CampaignNotFound(_campaignId);
         if (!campaign.isActive) revert CampaignNotActive(_campaignId);
         if (campaign.isReleased) revert CampaignAlreadyReleased(_campaignId);
+        if (campaign.isCancelled) revert CampaignCancelledError(_campaignId);
         if (block.timestamp > campaign.deadline) revert CampaignExpired(_campaignId);
         if (msg.value == 0) revert DonationAmountZero();
 
@@ -173,6 +193,7 @@ contract DonationEscrow is Ownable, ReentrancyGuard {
         if (campaign.targetAmount == 0) revert CampaignNotFound(_campaignId);
         if (!campaign.isActive) revert CampaignNotActive(_campaignId);
         if (campaign.isReleased) revert CampaignAlreadyReleased(_campaignId);
+        if (campaign.isCancelled) revert CampaignCancelledError(_campaignId);
         require(block.timestamp > campaign.deadline, "Deadline has not passed yet");
         require(campaign.totalDonated > 0, "No funds to claim");
 
@@ -186,6 +207,60 @@ contract DonationEscrow is Ownable, ReentrancyGuard {
         require(success, "Transfer to beneficiary failed");
 
         emit FundsReleased(_campaignId, campaign.beneficiary, totalAmount);
+    }
+
+    /**
+     * @dev Updates campaign terms before any donation is received.
+     *      Once donors commit funds, beneficiary, target, and deadline are locked.
+     * @param _campaignId The ID of the campaign to update.
+     * @param _beneficiary The new beneficiary wallet address.
+     * @param _targetAmount The new funding target in wei.
+     * @param _deadline The new unix timestamp after which the campaign expires.
+     */
+    function updateCampaignTerms(
+        uint256 _campaignId,
+        address payable _beneficiary,
+        uint256 _targetAmount,
+        uint256 _deadline
+    ) external {
+        Campaign storage campaign = campaigns[_campaignId];
+
+        if (campaign.targetAmount == 0) revert CampaignNotFound(_campaignId);
+        if (msg.sender != campaign.admin) revert NotCampaignAdmin(_campaignId);
+        if (!campaign.isActive) revert CampaignNotActive(_campaignId);
+        if (campaign.isReleased) revert CampaignAlreadyReleased(_campaignId);
+        if (campaign.isCancelled) revert CampaignCancelledError(_campaignId);
+        if (campaign.totalDonated > 0) revert CampaignHasDonations(_campaignId);
+        if (_beneficiary == address(0)) revert InvalidBeneficiary();
+        if (_targetAmount == 0) revert InvalidTargetAmount();
+        require(_deadline > block.timestamp, "Deadline must be in the future");
+
+        campaign.beneficiary = _beneficiary;
+        campaign.targetAmount = _targetAmount;
+        campaign.deadline = _deadline;
+
+        emit CampaignUpdated(_campaignId, _beneficiary, _targetAmount, _deadline);
+    }
+
+    /**
+     * @dev Cancels a campaign before any donation is received.
+     *      Campaigns with donations must follow the escrow release/refund rules.
+     * @param _campaignId The ID of the campaign to cancel.
+     */
+    function cancelCampaign(uint256 _campaignId) external {
+        Campaign storage campaign = campaigns[_campaignId];
+
+        if (campaign.targetAmount == 0) revert CampaignNotFound(_campaignId);
+        if (msg.sender != campaign.admin) revert NotCampaignAdmin(_campaignId);
+        if (!campaign.isActive) revert CampaignNotActive(_campaignId);
+        if (campaign.isReleased) revert CampaignAlreadyReleased(_campaignId);
+        if (campaign.isCancelled) revert CampaignCancelledError(_campaignId);
+        if (campaign.totalDonated > 0) revert CampaignHasDonations(_campaignId);
+
+        campaign.isActive = false;
+        campaign.isCancelled = true;
+
+        emit CampaignCancelled(_campaignId, msg.sender);
     }
 
     // ============================================================

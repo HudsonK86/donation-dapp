@@ -2,7 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 function toPublicCampaignStatus(status: string) {
-  return status === "released" || status === "funded" ? "released" : "active";
+  if (status === "released" || status === "funded") return "released";
+  if (status === "active") return "active";
+  return status;
+}
+
+function isLocalHardhat() {
+  return (
+    process.env.NEXT_PUBLIC_CHAIN_ID === "31337" ||
+    process.env.NEXT_PUBLIC_RPC_URL?.includes("127.0.0.1") ||
+    process.env.NEXT_PUBLIC_RPC_URL?.includes("localhost")
+  );
 }
 
 /**
@@ -57,6 +67,16 @@ export async function GET(request: NextRequest) {
           donations: {
             select: { donationAmount: true },
           },
+          blockchainEvents: {
+            where: { eventName: "FundsReleased" },
+            orderBy: { eventTimestamp: "desc" },
+            take: 1,
+          },
+          statusHistory: {
+            where: { newStatus: { in: ["released", "funded"] } },
+            orderBy: { changedAt: "desc" },
+            take: 1,
+          },
         },
         orderBy: { createdAt: "desc" },
         take: limit,
@@ -67,12 +87,23 @@ export async function GET(request: NextRequest) {
 
     // Calculate currentAmount from donations for each campaign
     const campaignsWithAmounts = campaigns.map((c) => {
-      const totalDonated = c.donations.reduce(
+      const {
+        donations,
+        onChainCampaignId,
+        targetAmount,
+        blockchainEvents,
+        statusHistory,
+        ...campaignWithoutDonations
+      } = c;
+      const totalDonated = donations.reduce(
         (sum, d) => sum + Number(d.donationAmount),
         0
       );
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { donations, onChainCampaignId, targetAmount, ...campaignWithoutDonations } = c;
+      const releasedAt =
+        blockchainEvents[0]?.eventTimestamp.toISOString() ??
+        statusHistory[0]?.changedAt.toISOString() ??
+        null;
+
       return {
         ...campaignWithoutDonations,
         targetAmount: Number(targetAmount),
@@ -80,6 +111,7 @@ export async function GET(request: NextRequest) {
         campaignStatus: toPublicCampaignStatus(c.campaignStatus),
         onChainCampaignId: onChainCampaignId != null ? Number(onChainCampaignId) : null,
         currentAmount: totalDonated,
+        releasedAt,
       };
     });
 
@@ -100,7 +132,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/campaigns
- * Create a new campaign (admin only — called after on-chain tx)
+ * Create a new campaign (admin only — called after on-chain transaction)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -169,13 +201,31 @@ export async function POST(request: NextRequest) {
       });
 
       if (existingOnChainCampaign) {
-        return NextResponse.json(
-          {
-            error:
-              "This local chain campaign ID is already linked to a different database campaign. Restarting Hardhat without resetting local data can reuse on-chain IDs.",
+        if (!isLocalHardhat()) {
+          return NextResponse.json(
+            {
+              error:
+                "This on-chain campaign ID is already linked to a different database campaign.",
+            },
+            { status: 409 }
+          );
+        }
+
+        await prisma.campaign.update({
+          where: { campaignId: existingOnChainCampaign.campaignId },
+          data: {
+            onChainCampaignId: null,
+            campaignStatus: "archived",
           },
-          { status: 409 }
-        );
+        });
+
+        await prisma.campaignStatusHistory.create({
+          data: {
+            campaignId: existingOnChainCampaign.campaignId,
+            oldStatus: existingOnChainCampaign.campaignStatus,
+            newStatus: "archived",
+          },
+        });
       }
     }
 

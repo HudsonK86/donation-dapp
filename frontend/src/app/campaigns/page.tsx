@@ -11,6 +11,7 @@ interface Campaign {
   currentAmount: number;
   tokenSymbol: string;
   campaignStatus: string;
+  campaignDeadline?: string | null;
   images: { imageUrl: string }[];
   _count: { donations: number };
 }
@@ -65,7 +66,7 @@ export default function CampaignsPage() {
       {/* Page Header */}
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-slate-900">
-          Active <span className="gradient-text">Campaigns</span>
+          <span className="gradient-text">Campaigns</span>
         </h1>
         <p className="mt-2 text-slate-500">
           Browse donation campaigns and contribute to causes you care about.
@@ -145,7 +146,7 @@ export default function CampaignsPage() {
           {campaigns.map((campaign, index) => (
             <div
               key={campaign.campaignId}
-              className="animate-fade-in"
+              className="h-full animate-fade-in"
               style={{ animationDelay: `${index * 80}ms` }}
             >
               <CampaignCard
@@ -158,6 +159,7 @@ export default function CampaignsPage() {
                 status={campaign.campaignStatus}
                 donationCount={campaign._count.donations}
                 tokenSymbol={campaign.tokenSymbol}
+                deadline={campaign.campaignDeadline}
               />
             </div>
           ))}
