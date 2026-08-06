@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
             email: true,
             profileBio: true,
             avatarUrl: true,
-            accountStatus: true,
           },
         },
       },
@@ -135,7 +134,6 @@ export async function PATCH(request: NextRequest) {
         email: true,
         profileBio: true,
         avatarUrl: true,
-        accountStatus: true,
       },
     });
 

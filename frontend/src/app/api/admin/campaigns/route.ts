@@ -62,15 +62,11 @@ export async function GET(request: Request) {
         creator: {
           select: { userId: true, fullName: true },
         },
-        beneficiaryUser: {
-          select: { userId: true, fullName: true },
-        },
         beneficiaryWallet: {
-          select: { walletAddress: true },
-        },
-        images: {
-          orderBy: { displayOrder: "asc" },
-          take: 1,
+          select: {
+            walletAddress: true,
+            user: { select: { userId: true, fullName: true } },
+          },
         },
         _count: {
           select: { donations: true },

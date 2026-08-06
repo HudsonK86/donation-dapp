@@ -32,14 +32,12 @@ async function main() {
     update: {
       role: "admin",
       fullName: "Admin",
-      accountStatus: "active",
     },
     create: {
       userId: ADMIN_USER_ID,
       role: "admin",
       fullName: "Admin",
       email: "admin@donatechain.local",
-      accountStatus: "active",
     },
   });
 

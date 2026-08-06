@@ -77,9 +77,15 @@ export function useCreateCampaign() {
 export function useDonate() {
   const { data: hash, writeContract, isPending, error } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+  const { data: receipt, isLoading: isConfirming, isSuccess: receiptFound } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Only treat the donation as successful when the receipt actually exists
+  // AND its on-chain status is success (status === "success"). Wagmi's
+  // `isSuccess` from `useWaitForTransactionReceipt` only means the receipt
+  // was found, not that the transaction succeeded.
+  const isSuccess = Boolean(receiptFound && receipt && receipt.status === "success");
 
   const donate = (campaignId: bigint, amountEth: string) => {
     writeContract({
@@ -94,6 +100,7 @@ export function useDonate() {
   return {
     donate,
     hash,
+    receipt,
     isPending,
     isConfirming,
     isSuccess,
@@ -107,9 +114,11 @@ export function useDonate() {
 export function useClaimFunds() {
   const { data: hash, writeContract, isPending, error } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+  const { data: receipt, isLoading: isConfirming, isSuccess: receiptFound } = useWaitForTransactionReceipt({
     hash,
   });
+
+  const isSuccess = Boolean(receiptFound && receipt && receipt.status === "success");
 
   const claimFunds = (campaignId: bigint) => {
     writeContract({
@@ -123,6 +132,7 @@ export function useClaimFunds() {
   return {
     claimFunds,
     hash,
+    receipt,
     isPending,
     isConfirming,
     isSuccess,

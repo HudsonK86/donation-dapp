@@ -48,17 +48,12 @@ const client = createPublicClient({
 const MATCH_ATTEMPTS = 10;
 const MATCH_DELAY_MS = 500;
 
-type ContractEventLog = {
-  args: Record<string, unknown>;
-  transactionHash?: `0x${string}` | null;
-  logIndex?: number | null;
-  blockNumber?: bigint | null;
-};
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
+// Lookup a campaign row by its on-chain create transaction hash. With the
+// single-step creation flow (POST /api/campaigns after the on-chain tx
+// confirms), this lookup normally succeeds on the first attempt because
+// the DB write happens within a few hundred milliseconds of the on-chain
+// event being emitted. The retry loop is kept as a safety net for slow
+// Prisma queries or transient DB hiccups.
 async function findCampaignByCreateTxHash(txHash: string) {
   for (let attempt = 1; attempt <= MATCH_ATTEMPTS; attempt += 1) {
     const campaign = await prisma.campaign.findFirst({
@@ -70,6 +65,43 @@ async function findCampaignByCreateTxHash(txHash: string) {
   }
 
   return null;
+}
+
+// Fallback lookup: if we can't find a campaign by createTxHash (e.g. the
+// race between on-chain event emission and DB write slipped past the
+// retry window above), try matching by the on-chain campaign ID. This
+// recovers CampaignCreated events that would otherwise be silently
+// dropped.
+//
+// Only campaigns in `draft` or `active` status are considered — archived
+// or cancelled campaigns with a stale onChainCampaignId (e.g. after a
+// Hardhat restart) are skipped so we don't accidentally reattach events
+// to a campaign that was deliberately removed from the chain.
+async function findCampaignByOnChainId(onChainCampaignId: bigint) {
+  for (let attempt = 1; attempt <= MATCH_ATTEMPTS; attempt += 1) {
+    const campaign = await prisma.campaign.findFirst({
+      where: {
+        onChainCampaignId,
+        campaignStatus: { in: ["draft", "active"] },
+      },
+    });
+
+    if (campaign) return campaign;
+    if (attempt < MATCH_ATTEMPTS) await sleep(MATCH_DELAY_MS);
+  }
+
+  return null;
+}
+
+type ContractEventLog = {
+  args: Record<string, unknown>;
+  transactionHash?: `0x${string}` | null;
+  logIndex?: number | null;
+  blockNumber?: bigint | null;
+};
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function findDonationByTxHash(txHash: string) {
@@ -90,20 +122,16 @@ async function resolveBeneficiaryWallet(walletAddress: string) {
 
   const existingWallet = await prisma.wallet.findUnique({
     where: { walletAddress: normalizedAddress },
-    select: { walletId: true, userId: true },
+    select: { walletId: true },
   });
 
   if (existingWallet) {
-    return {
-      beneficiaryUserId: existingWallet.userId,
-      beneficiaryWalletId: existingWallet.walletId,
-    };
+    return { beneficiaryWalletId: existingWallet.walletId };
   }
 
   const user = await prisma.user.create({
     data: {
       role: "user",
-      accountStatus: "active",
       wallets: {
         create: {
           walletAddress: normalizedAddress,
@@ -120,10 +148,11 @@ async function resolveBeneficiaryWallet(walletAddress: string) {
     },
   });
 
-  return {
-    beneficiaryUserId: user.userId,
-    beneficiaryWalletId: user.wallets[0]?.walletId ?? null,
-  };
+  const createdWalletId = user.wallets[0]?.walletId;
+  if (!createdWalletId) {
+    throw new Error("Failed to create beneficiary wallet");
+  }
+  return { beneficiaryWalletId: createdWalletId };
 }
 
 // ============================================================
@@ -147,9 +176,17 @@ async function handleCampaignCreated(log: ContractEventLog) {
       return;
     }
 
-    // Campaign IDs restart from 1 whenever the local Hardhat node is reset.
-    // The create transaction hash is the stable link between this event and the DB row.
-    const campaign = await findCampaignByCreateTxHash(log.transactionHash);
+    // Primary lookup: match by createTxHash. The frontend writes
+    // createTxHash after the on-chain tx confirms, which usually happens
+    // within a few hundred milliseconds of the event being emitted, so
+    // this lookup normally succeeds on the first poll.
+    let campaign = await findCampaignByCreateTxHash(log.transactionHash);
+
+    // Fallback lookup: if createTxHash didn't match (race window slipped
+    // past the retry loop above), try matching by on-chain campaign ID.
+    if (!campaign) {
+      campaign = await findCampaignByOnChainId(campaignId);
+    }
 
     if (campaign) {
       const oldStatus = campaign.campaignStatus;
@@ -239,7 +276,6 @@ async function handleCampaignUpdated(log: ContractEventLog) {
       await tx.campaign.update({
         where: { campaignId: campaign.campaignId },
         data: {
-          beneficiaryUserId: beneficiaryWallet.beneficiaryUserId,
           beneficiaryWalletId: beneficiaryWallet.beneficiaryWalletId,
           targetAmount: Number(formatEther(targetAmount)),
           campaignDeadline: new Date(Number(deadline) * 1000),

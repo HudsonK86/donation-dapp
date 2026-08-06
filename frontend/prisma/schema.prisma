@@ -21,14 +21,12 @@ model User {
   email         String?  @db.VarChar(255)
   profileBio    String?  @map("profile_bio") @db.Text
   avatarUrl     String?  @map("avatar_url") @db.VarChar(500)
-  accountStatus String   @default("active") @map("account_status") @db.VarChar(30)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz()
 
   // Relations
   wallets              Wallet[]
   createdCampaigns     Campaign[] @relation("CampaignCreator")
-  beneficiaryCampaigns Campaign[] @relation("CampaignBeneficiary")
   donations            Donation[]
 
   @@map("users")
@@ -63,10 +61,10 @@ model Campaign {
   campaignId          String    @id @default(uuid()) @map("campaign_id") @db.Uuid
   onChainCampaignId   BigInt?   @unique @map("on_chain_campaign_id")
   creatorUserId       String    @map("creator_user_id") @db.Uuid
-  beneficiaryUserId   String?   @map("beneficiary_user_id") @db.Uuid
-  beneficiaryWalletId String?   @map("beneficiary_wallet_id") @db.Uuid
+  beneficiaryWalletId String    @map("beneficiary_wallet_id") @db.Uuid
   campaignTitle       String    @map("campaign_title") @db.VarChar(200)
   campaignDescription String?   @map("campaign_description") @db.Text
+  imageUrl            String?   @map("image_url") @db.VarChar(500)
   targetAmount        Decimal   @map("target_amount") @db.Decimal(18, 2)
   currentAmountCached Decimal   @default(0) @map("current_amount_cached") @db.Decimal(18, 2)
   tokenSymbol         String    @default("USDT") @map("token_symbol") @db.VarChar(20)
@@ -79,31 +77,12 @@ model Campaign {
 
   // Relations
   creator           User                    @relation("CampaignCreator", fields: [creatorUserId], references: [userId])
-  beneficiaryUser   User?                   @relation("CampaignBeneficiary", fields: [beneficiaryUserId], references: [userId])
-  beneficiaryWallet Wallet?                 @relation("BeneficiaryWallet", fields: [beneficiaryWalletId], references: [walletId])
-  images            CampaignImage[]
+  beneficiaryWallet Wallet                  @relation("BeneficiaryWallet", fields: [beneficiaryWalletId], references: [walletId])
   statusHistory     CampaignStatusHistory[]
   donations         Donation[]
   blockchainEvents  BlockchainEvent[]
 
   @@map("campaigns")
-}
-
-// ============================================================
-//                     CAMPAIGN IMAGES
-// ============================================================
-
-model CampaignImage {
-  imageId      String   @id @default(uuid()) @map("image_id") @db.Uuid
-  campaignId   String   @map("campaign_id") @db.Uuid
-  imageUrl     String   @map("image_url") @db.VarChar(500)
-  displayOrder Int      @default(0) @map("display_order")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
-
-  // Relations
-  campaign Campaign @relation(fields: [campaignId], references: [campaignId])
-
-  @@map("campaign_images")
 }
 
 // ============================================================

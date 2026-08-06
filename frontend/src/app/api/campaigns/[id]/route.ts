@@ -28,20 +28,15 @@ async function resolveBeneficiaryWallet(walletAddress: string) {
 
   const existingWallet = await prisma.wallet.findUnique({
     where: { walletAddress: normalizedAddress },
-    include: { user: true },
   });
 
   if (existingWallet) {
-    return {
-      beneficiaryUserId: existingWallet.userId,
-      beneficiaryWalletId: existingWallet.walletId,
-    };
+    return { beneficiaryWalletId: existingWallet.walletId };
   }
 
   const beneficiaryUser = await prisma.user.create({
     data: {
       role: "user",
-      accountStatus: "active",
       wallets: {
         create: {
           walletAddress: normalizedAddress,
@@ -54,10 +49,11 @@ async function resolveBeneficiaryWallet(walletAddress: string) {
     include: { wallets: true },
   });
 
-  return {
-    beneficiaryUserId: beneficiaryUser.userId,
-    beneficiaryWalletId: beneficiaryUser.wallets[0]?.walletId ?? null,
-  };
+  const createdWalletId = beneficiaryUser.wallets[0]?.walletId;
+  if (!createdWalletId) {
+    throw new Error("Failed to create beneficiary wallet");
+  }
+  return { beneficiaryWalletId: createdWalletId };
 }
 
 async function verifyCampaignUpdateTransaction({
@@ -134,14 +130,11 @@ export async function GET(
         creator: {
           select: { userId: true, fullName: true },
           },
-        beneficiaryUser: {
-          select: { userId: true, fullName: true },
-        },
         beneficiaryWallet: {
-          select: { walletAddress: true },
-        },
-        images: {
-          orderBy: { displayOrder: "asc" },
+          select: {
+            walletAddress: true,
+            user: { select: { userId: true, fullName: true } },
+          },
         },
         donations: {
           include: {
@@ -211,15 +204,25 @@ export async function GET(
           ? (event.payloadJson as Record<string, string | undefined>)
           : {};
 
+      // For FundsReleased, the actual on-chain transfer is
+      // contract -> beneficiary, but the event itself doesn't include a
+      // `from` address. Override `fromAddress` to the contract address so
+      // the UI doesn't misleadingly show the beneficiary as the sender.
+      const isFundsReleased = event.eventName === "FundsReleased";
+      const defaultFrom = isFundsReleased ? event.contractAddress : event.contractAddress;
+      const fromAddress =
+        payload.donor ??
+        payload.admin ??
+        (isFundsReleased ? undefined : payload.beneficiary) ??
+        defaultFrom;
+
       return {
         ...event,
         eventType: event.eventName,
-        fromAddress:
-          payload.donor ??
-          payload.admin ??
-          payload.beneficiary ??
-          event.contractAddress,
-        toAddress: payload.beneficiary ?? null,
+        fromAddress,
+        toAddress: isFundsReleased
+          ? payload.beneficiary ?? null
+          : payload.beneficiary ?? null,
         valueWei:
           payload.amount ??
           payload.totalAmount ??
@@ -270,10 +273,6 @@ export async function PATCH(
       where: { campaignId: id },
       include: {
         _count: { select: { donations: true } },
-        images: {
-          orderBy: { displayOrder: "asc" },
-          take: 1,
-        },
       },
     });
 
@@ -325,8 +324,8 @@ export async function PATCH(
     const updateData: {
       campaignTitle: string;
       campaignDescription: string | null;
-      beneficiaryUserId?: string | null;
-      beneficiaryWalletId?: string | null;
+      imageUrl?: string | null;
+      beneficiaryWalletId?: string;
       targetAmount?: number;
       campaignDeadline?: Date;
     } = {
@@ -404,7 +403,6 @@ export async function PATCH(
       }
 
       const beneficiary = await resolveBeneficiaryWallet(beneficiaryWalletAddress);
-      updateData.beneficiaryUserId = beneficiary.beneficiaryUserId;
       updateData.beneficiaryWalletId = beneficiary.beneficiaryWalletId;
       updateData.targetAmount = targetAmount;
       updateData.campaignDeadline = campaignDeadline;
@@ -419,39 +417,18 @@ export async function PATCH(
         ? body.imageUrl.trim()
         : null;
 
-    const updatedCampaign = await prisma.$transaction(async (tx) => {
-      const updated = await tx.campaign.update({
-        where: { campaignId: id },
-        data: updateData,
-        include: {
-          creator: { select: { userId: true, fullName: true } },
-          beneficiaryWallet: { select: { walletAddress: true } },
-          images: {
-            orderBy: { displayOrder: "asc" },
-          },
-          _count: { select: { donations: true } },
-        },
-      });
+    if (imageUrl) {
+      updateData.imageUrl = imageUrl;
+    }
 
-      if (imageUrl) {
-        const firstImage = campaign.images[0];
-        if (firstImage) {
-          await tx.campaignImage.update({
-            where: { imageId: firstImage.imageId },
-            data: { imageUrl },
-          });
-        } else {
-          await tx.campaignImage.create({
-            data: {
-              campaignId: id,
-              imageUrl,
-              displayOrder: 0,
-            },
-          });
-        }
-      }
-
-      return updated;
+    const updatedCampaign = await prisma.campaign.update({
+      where: { campaignId: id },
+      data: updateData,
+      include: {
+        creator: { select: { userId: true, fullName: true } },
+        beneficiaryWallet: { select: { walletAddress: true } },
+        _count: { select: { donations: true } },
+      },
     });
 
     return NextResponse.json({

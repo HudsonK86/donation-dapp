@@ -30,13 +30,12 @@ async function main() {
   assertLocalDatabase();
 
   console.log("Resetting local database...");
-  console.log("This removes users, wallets, campaigns, donations, images, and indexed events.");
+  console.log("This removes users, wallets, campaigns, donations, and indexed events.");
 
   const [
     blockchainEvents,
     donations,
     statusHistory,
-    campaignImages,
     campaigns,
     wallets,
     users,
@@ -44,7 +43,6 @@ async function main() {
     prisma.blockchainEvent.deleteMany(),
     prisma.donation.deleteMany(),
     prisma.campaignStatusHistory.deleteMany(),
-    prisma.campaignImage.deleteMany(),
     prisma.campaign.deleteMany(),
     prisma.wallet.deleteMany(),
     prisma.user.deleteMany(),
@@ -54,7 +52,6 @@ async function main() {
   console.log(`  Blockchain events: ${blockchainEvents.count}`);
   console.log(`  Donations:          ${donations.count}`);
   console.log(`  Status history:     ${statusHistory.count}`);
-  console.log(`  Campaign images:    ${campaignImages.count}`);
   console.log(`  Campaigns:          ${campaigns.count}`);
   console.log(`  Wallets:            ${wallets.count}`);
   console.log(`  Users:              ${users.count}`);

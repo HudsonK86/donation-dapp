@@ -103,6 +103,21 @@ contract DonationEscrow is Ownable, ReentrancyGuard {
     }
 
     // ============================================================
+    //                      RECEIVE / FALLBACK
+    // ============================================================
+
+    /**
+     * @dev Explicit receive function so wallet simulators (`eth_call` /
+     *      `eth_estimateGas`) get a real revert reason instead of a generic
+     *      "unrecognized selector" failure. Without this, MetaMask shows
+     *      the transaction as failed even when the actual send succeeds.
+     *      All donations must go through `donateToCampaign`.
+     */
+    receive() external payable {
+        revert("Use donateToCampaign(uint256) to donate");
+    }
+
+    // ============================================================
     //                      WRITE FUNCTIONS
     // ============================================================
 

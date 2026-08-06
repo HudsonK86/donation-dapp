@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "dev:all": "concurrently -n web,indexer -c cyan,magenta \"next dev --webpack\" \"npm run indexer\"",
+    "dev:refresh": "npm run db:reset:local && npm run dev:all",
     "dev:web": "next dev --webpack",
     "build": "next build",
     "start": "next start",
@@ -21,6 +22,8 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@base-org/account": "^2.5.9",
+    "@metamask/connect-evm": "^2.1.1",
     "@prisma/client": "^6.8.0",
     "@reown/appkit": "^1.6.0",
     "@reown/appkit-adapter-wagmi": "^1.6.0",
@@ -29,7 +32,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-toastify": "^11.1.0",
-    "viem": "^2.21.0",
+    "viem": "^2.55.11",
     "wagmi": "^2.14.0"
   },
   "devDependencies": {

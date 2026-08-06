@@ -6,6 +6,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "node": "hardhat node",
+    "node:silent": "tsx scripts/silent-node.ts",
+    "node:silent:test": "tsx scripts/silent-node.test.ts",
     "deploy": "hardhat ignition deploy ignition/modules/DonationEscrow.ts --network localhost --reset && npm run sync:frontend-env",
     "deploy:local": "hardhat ignition deploy ignition/modules/DonationEscrow.ts --network localhost --reset",
     "sync:frontend-env": "tsx ./scripts/sync-frontend-env.ts",

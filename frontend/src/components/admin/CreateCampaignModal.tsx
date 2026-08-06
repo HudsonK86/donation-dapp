@@ -478,14 +478,48 @@ export function CreateCampaignModal({
 
           {/* Image Upload */}
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1.5">
+            <label className="mb-1.5 block text-xs font-medium text-slate-500">
               Campaign Image
             </label>
-            <div className="flex items-center gap-4">
-              <label className="flex-1 cursor-pointer flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                <span className="text-2xl mb-2">📸</span>
+
+            {previewUrl ? (
+              <div className="relative w-full max-w-full overflow-hidden rounded-xl bg-slate-100">
+                <div className="flex h-48 w-full items-center justify-center">
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (previewUrl) URL.revokeObjectURL(previewUrl);
+                    setFile(null);
+                    setPreviewUrl(null);
+                  }}
+                  className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70 transition-colors"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 transition-colors hover:border-indigo-400 hover:bg-indigo-50/30">
+                <span className="mb-2 text-2xl">📸</span>
                 <span className="text-sm font-medium text-slate-600">
-                  {file ? file.name : "Click to upload an image"}
+                  Click to upload an image
                 </span>
                 <input
                   type="file"
@@ -494,13 +528,7 @@ export function CreateCampaignModal({
                   className="hidden"
                 />
               </label>
-              {previewUrl && (
-                <div className="h-24 w-24 rounded-xl overflow-hidden shadow-sm shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Description */}

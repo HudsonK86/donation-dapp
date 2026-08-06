@@ -153,7 +153,7 @@ export default function CampaignsPage() {
                 campaignId={campaign.campaignId}
                 title={campaign.campaignTitle}
                 description={campaign.campaignDescription}
-                imageUrl={campaign.images[0]?.imageUrl}
+                imageUrl={campaign.imageUrl}
                 targetAmount={Number(campaign.targetAmount)}
                 currentAmount={campaign.currentAmount}
                 status={campaign.campaignStatus}

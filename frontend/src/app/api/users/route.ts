@@ -73,7 +73,6 @@ export async function POST(request: NextRequest) {
           normalizedAddress === config.adminWalletAddress
           ? "admin"
           : "user",
-        accountStatus: "active",
         wallets: {
           create: {
             walletAddress: normalizedAddress,

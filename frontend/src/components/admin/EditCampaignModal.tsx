@@ -18,7 +18,7 @@ export interface EditableCampaign {
   tokenSymbol: string;
   campaignDeadline: string | null;
   beneficiaryWallet?: { walletAddress: string } | null;
-  images?: { imageUrl: string }[];
+  imageUrl?: string | null;
   _count: { donations: number };
 }
 
@@ -104,6 +104,7 @@ export function EditCampaignModal({
   const [deadlineDate, setDeadlineDate] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [existingImageRemoved, setExistingImageRemoved] = useState(false);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -115,8 +116,8 @@ export function EditCampaignModal({
   const canEditTerms =
     Boolean(campaign?.onChainCampaignId != null) && isActive && !hasDonations;
   const isBusy = isPending || saving || uploading || confirming;
-  const existingImageUrl = campaign?.images?.[0]?.imageUrl ?? null;
-  const imagePreview = previewUrl ?? existingImageUrl;
+  const existingImageUrl = campaign?.imageUrl ?? null;
+  const imagePreview = previewUrl ?? (existingImageRemoved ? null : existingImageUrl);
 
   useEffect(() => {
     if (!isOpen || !campaign) return;
@@ -129,6 +130,7 @@ export function EditCampaignModal({
       setDeadlineDate(toDateInputValue(campaign.campaignDeadline));
       setFile(null);
       setPreviewUrl(null);
+      setExistingImageRemoved(false);
       setFormError("");
     }, 0);
 
@@ -388,11 +390,46 @@ export function EditCampaignModal({
             <label className="mb-1.5 block text-xs font-medium text-slate-500">
               Campaign Image
             </label>
-            <div className="flex items-center gap-4">
-              <label className="flex min-h-28 flex-1 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 transition-colors hover:bg-slate-100">
+
+            {imagePreview ? (
+              <div className="relative w-full max-w-full overflow-hidden rounded-xl bg-slate-100">
+                <div className="flex h-48 w-full items-center justify-center">
+                  <img
+                    src={imagePreview}
+                    alt="Campaign preview"
+                    style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (previewUrl) URL.revokeObjectURL(previewUrl);
+                    setFile(null);
+                    setPreviewUrl(null);
+                    setExistingImageRemoved(true);
+                  }}
+                  className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70 transition-colors"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 transition-colors hover:border-indigo-400 hover:bg-indigo-50/30">
                 <span className="mb-2 text-2xl">📸</span>
                 <span className="text-sm font-medium text-slate-600">
-                  {file ? file.name : "Click to upload an image"}
+                  Click to upload an image
                 </span>
                 <input
                   type="file"
@@ -401,17 +438,7 @@ export function EditCampaignModal({
                   className="hidden"
                 />
               </label>
-              {imagePreview && (
-                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl shadow-sm">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imagePreview}
-                    alt="Campaign preview"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           <div>

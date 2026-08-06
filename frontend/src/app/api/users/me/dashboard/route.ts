@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     // 3. Funds Received (sum of targets for 'released' campaigns where user is beneficiary)
     const fundsReceivedAggr = await prisma.campaign.aggregate({
       where: {
-        beneficiaryUserId: userId,
+        beneficiaryWallet: { userId },
         campaignStatus: "released",
       },
       _sum: { targetAmount: true },
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     // 4. Active Campaigns (where user is beneficiary)
     const activeCampaigns = await prisma.campaign.count({
       where: {
-        beneficiaryUserId: userId,
+        beneficiaryWallet: { userId },
         campaignStatus: "active",
       },
     });
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 
     // 6. Beneficiary Campaigns
     const beneficiaryCampaignsRaw = await prisma.campaign.findMany({
-      where: { beneficiaryUserId: userId },
+      where: { beneficiaryWallet: { userId } },
       include: {
         donations: {
           select: { donationAmount: true },

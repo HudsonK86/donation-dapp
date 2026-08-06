@@ -48,7 +48,7 @@ interface Campaign {
   campaignDeadline: string | null;
   releasedAt?: string | null;
   beneficiaryWallet?: { walletAddress: string };
-  images?: { imageUrl: string }[];
+  imageUrl?: string | null;
   _count: { donations: number };
 }
 
@@ -371,7 +371,6 @@ export function AdminDashboard() {
                 <th className="px-6 py-4 font-medium">Campaign</th>
                 <th className="px-6 py-4 font-medium">Progress</th>
                 <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium">Beneficiary</th>
                 <th className="px-6 py-4 font-medium">Created</th>
                 <th className="px-6 py-4 font-medium">Deadline</th>
                 <th className="px-6 py-4 font-medium">Actions</th>
@@ -382,7 +381,7 @@ export function AdminDashboard() {
                 // Loading skeleton rows
                 Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i} className="border-b border-slate-50">
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <td key={j} className="px-6 py-4">
                         <div className="h-4 bg-slate-100 rounded w-20 animate-pulse" />
                       </td>
@@ -392,7 +391,7 @@ export function AdminDashboard() {
               ) : campaigns.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={6}
                     className="px-6 py-16 text-center text-slate-400"
                   >
                     <div className="flex flex-col items-center gap-3">
@@ -454,12 +453,6 @@ export function AdminDashboard() {
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-500">
-                      <AddressDisplay
-                        address={campaign.beneficiaryWallet?.walletAddress}
-                        kind="wallet"
-                      />
                     </td>
                     <td className="px-6 py-4 text-slate-500 text-xs">
                       {new Date(campaign.createdAt).toLocaleDateString()}

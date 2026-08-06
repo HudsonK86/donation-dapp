@@ -51,15 +51,11 @@ export async function GET(request: NextRequest) {
           creator: {
             select: { userId: true, fullName: true },
           },
-          beneficiaryUser: {
-            select: { userId: true, fullName: true },
-          },
           beneficiaryWallet: {
-            select: { walletAddress: true },
-          },
-          images: {
-            orderBy: { displayOrder: "asc" },
-            take: 1,
+            select: {
+              walletAddress: true,
+              user: { select: { userId: true, fullName: true } },
+            },
           },
           _count: {
             select: { donations: true },
@@ -140,7 +136,6 @@ export async function POST(request: NextRequest) {
 
     const {
       creatorUserId,
-      beneficiaryUserId,
       beneficiaryWalletId,
       beneficiaryWalletAddress,
       campaignTitle,
@@ -178,7 +173,6 @@ export async function POST(request: NextRequest) {
         where: { createTxHash },
         include: {
           creator: { select: { userId: true, fullName: true } },
-          images: true,
         },
       });
 
@@ -229,7 +223,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let finalBeneficiaryUserId = beneficiaryUserId || null;
     let finalBeneficiaryWalletId = beneficiaryWalletId || null;
 
     if (!finalBeneficiaryWalletId && beneficiaryWalletAddress) {
@@ -237,17 +230,14 @@ export async function POST(request: NextRequest) {
 
       const existingWallet = await prisma.wallet.findUnique({
         where: { walletAddress: normalizedBeneficiaryAddress },
-        include: { user: true },
       });
 
       if (existingWallet) {
-        finalBeneficiaryUserId = existingWallet.userId;
         finalBeneficiaryWalletId = existingWallet.walletId;
       } else {
         const beneficiaryUser = await prisma.user.create({
           data: {
             role: "user",
-            accountStatus: "active",
             wallets: {
               create: {
                 walletAddress: normalizedBeneficiaryAddress,
@@ -260,18 +250,24 @@ export async function POST(request: NextRequest) {
           include: { wallets: true },
         });
 
-        finalBeneficiaryUserId = beneficiaryUser.userId;
-        finalBeneficiaryWalletId = beneficiaryUser.wallets[0]?.walletId || null;
+        finalBeneficiaryWalletId = beneficiaryUser.wallets[0]?.walletId ?? null;
       }
+    }
+
+    if (!finalBeneficiaryWalletId) {
+      return NextResponse.json(
+        { error: "A beneficiary wallet (beneficiaryWalletId or beneficiaryWalletAddress) is required." },
+        { status: 400 }
+      );
     }
 
     const campaign = await prisma.campaign.create({
       data: {
         creatorUserId,
-        beneficiaryUserId: finalBeneficiaryUserId,
         beneficiaryWalletId: finalBeneficiaryWalletId,
         campaignTitle,
         campaignDescription: campaignDescription || null,
+        imageUrl: imageUrl || null,
         targetAmount: parseFloat(targetAmount),
         tokenSymbol: tokenSymbol || "USDT",
         onChainCampaignId: normalizedOnChainCampaignId,
@@ -279,13 +275,9 @@ export async function POST(request: NextRequest) {
         campaignStatus: normalizedOnChainCampaignId != null ? "active" : "draft",
         campaignDeadline: campaignDeadline ? new Date(campaignDeadline) : null,
         publishedAt: normalizedOnChainCampaignId != null ? new Date() : null,
-        images: imageUrl ? {
-          create: [{ imageUrl }]
-        } : undefined,
       },
       include: {
         creator: { select: { userId: true, fullName: true } },
-        images: true,
       },
     });
 

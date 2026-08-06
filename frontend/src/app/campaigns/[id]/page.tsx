@@ -48,7 +48,6 @@ interface Campaign {
   createdAt: string;
   images: { imageUrl: string }[];
   creator?: { fullName: string | null };
-  beneficiaryUser?: { fullName: string | null };
   beneficiaryWallet?: { walletAddress: string };
   donations: Donation[];
   blockchainEvents: BlockchainEvent[];
@@ -409,9 +408,9 @@ export default function CampaignDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Campaign Image */}
           <div className="card overflow-hidden">
-            {campaign.images[0] ? (
+            {campaign.imageUrl ? (
               <img
-                src={campaign.images[0].imageUrl}
+                src={campaign.imageUrl}
                 alt={campaign.campaignTitle}
                 className="w-full h-72 object-cover"
               />
