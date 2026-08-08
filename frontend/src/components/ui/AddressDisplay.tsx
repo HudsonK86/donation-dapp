@@ -375,7 +375,7 @@ function ProfileModal({
                     <>
                       <span>{item.value}</span>
                       <span className="text-xs font-semibold text-slate-400">
-                        USDT
+                        ETH
                       </span>
                     </>
                   )}

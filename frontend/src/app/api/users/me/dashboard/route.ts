@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
       campaignId: d.campaignId,
       campaignTitle: d.campaign.campaignTitle,
       amount: Number(d.donationAmount),
-      tokenSymbol: "USDT",
+      tokenSymbol: "ETH",
       txHash: d.txHash,
       date: d.createdAt.toISOString(),
     }));
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
         campaignTitle: c.campaignTitle,
         targetAmount: Number(c.targetAmount),
         currentAmount: totalDonated,
-        tokenSymbol: "USDT",
+        tokenSymbol: "ETH",
         status: toPublicCampaignStatus(c.campaignStatus),
         createdAt: c.createdAt.toISOString(),
         deadline: c.campaignDeadline ? c.campaignDeadline.toISOString() : null,

@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       return {
         ...campaignWithoutDonations,
         targetAmount: Number(targetAmount),
-        tokenSymbol: "USDT",
+        tokenSymbol: "ETH",
         campaignStatus: toPublicCampaignStatus(c.campaignStatus),
         onChainCampaignId: onChainCampaignId != null ? Number(onChainCampaignId) : null,
         currentAmount: totalDonated,
@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
         campaignDescription: campaignDescription || null,
         imageUrl: imageUrl || null,
         targetAmount: parseFloat(targetAmount),
-        tokenSymbol: tokenSymbol || "USDT",
+        tokenSymbol: tokenSymbol || "ETH",
         onChainCampaignId: normalizedOnChainCampaignId,
         createTxHash: createTxHash || null,
         campaignStatus: normalizedOnChainCampaignId != null ? "active" : "draft",

@@ -109,7 +109,7 @@ export async function GET(request: Request) {
       return {
         ...campaignWithoutDonations,
         targetAmount: Number(targetAmount),
-        tokenSymbol: "USDT",
+        tokenSymbol: "ETH",
         campaignStatus: toPublicCampaignStatus(campaign.campaignStatus),
         onChainCampaignId:
           onChainCampaignId != null ? Number(onChainCampaignId) : null,

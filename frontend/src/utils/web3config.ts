@@ -15,8 +15,8 @@ export const hardhatNetwork = defineChain({
   chainNamespace: "eip155",
   caipNetworkId: `eip155:${config.chainId}`,
   nativeCurrency: {
-    name: "USDT",
-    symbol: "USDT",
+    name: "ETH",
+    symbol: "ETH",
     decimals: 18,
   },
   rpcUrls: {

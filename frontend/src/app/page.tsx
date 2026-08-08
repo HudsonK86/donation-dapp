@@ -66,7 +66,7 @@ export default function HomePage() {
                 step: "02",
                 title: "Donate with Wallet",
                 description:
-                  "Donors connect their crypto wallet and send USDT directly to the smart contract escrow.",
+                  "Donors connect their crypto wallet and send ETH directly to the smart contract escrow.",
                 icon: "💰",
               },
               {

@@ -237,7 +237,7 @@ export async function GET(
       campaign: {
         ...campaign,
         targetAmount: Number(campaign.targetAmount),
-        tokenSymbol: "USDT",
+        tokenSymbol: "ETH",
         campaignStatus: toPublicCampaignStatus(campaign.campaignStatus),
         onChainCampaignId: campaign.onChainCampaignId != null
           ? Number(campaign.onChainCampaignId)

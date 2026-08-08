@@ -22,7 +22,7 @@ export function CampaignCard({
   currentAmount,
   status,
   donationCount,
-  tokenSymbol = "USDT",
+  tokenSymbol = "ETH",
   deadline,
 }: CampaignCardProps) {
   const progress = targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;

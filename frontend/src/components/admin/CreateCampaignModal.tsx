@@ -261,7 +261,7 @@ export function CreateCampaignModal({
           campaignTitle: title,
           campaignDescription: description,
           targetAmount,
-          tokenSymbol: "USDT",
+          tokenSymbol: "ETH",
           onChainCampaignId: onChainCampaignId.toString(),
           beneficiaryWalletAddress: getAddress(beneficiary.trim()),
           createTxHash: txHash,
@@ -563,7 +563,7 @@ export function CreateCampaignModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1.5">
-                Target Amount (USDT) *
+                Target Amount (ETH) *
               </label>
               <input
                 type="number"

@@ -150,7 +150,7 @@ export function UserDashboard() {
       {
         label: "Total Donated",
         value: stats ? formatStatAmount(stats.totalDonated) : "-",
-        unit: stats ? "USDT" : undefined,
+        unit: stats ? "ETH" : undefined,
         accentClass: "bg-sky-400",
       },
       {
@@ -161,7 +161,7 @@ export function UserDashboard() {
       {
         label: "Received",
         value: stats ? formatStatAmount(receivedAmount) : "-",
-        unit: stats ? "USDT" : undefined,
+        unit: stats ? "ETH" : undefined,
         accentClass: "bg-indigo-400",
       },
       {
@@ -429,7 +429,7 @@ function StatCard({
           </div>
         )}
         <p className={`mt-2 h-4 text-xs font-semibold uppercase leading-4 tracking-[0.08em] text-slate-400 ${stat.unit ? "" : "invisible"}`}>
-          {stat.unit ?? "USDT"}
+          {stat.unit ?? "ETH"}
         </p>
       </div>
     </div>

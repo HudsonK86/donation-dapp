@@ -109,7 +109,7 @@ function buildTransactionRows(campaign: Campaign): TransactionRow[] {
     id: `event-${event.eventId}`,
     eventType: event.eventType,
     fromAddress: event.fromAddress,
-    amountText: `${formatTokenAmount(event.valueWei)} USDT`,
+    amountText: `${formatTokenAmount(event.valueWei)} ETH`,
     txHash: event.txHash,
     dateText: formatDisplayDate(event.blockTimestamp),
     sortTime: event.blockTimestamp
@@ -123,7 +123,7 @@ function buildTransactionRows(campaign: Campaign): TransactionRow[] {
       id: `donation-${donation.donationId}`,
       eventType: "DonationReceived",
       fromAddress: donation.donorWallet?.walletAddress,
-      amountText: `${Number(donation.donationAmount).toFixed(4)} USDT`,
+      amountText: `${Number(donation.donationAmount).toFixed(4)} ETH`,
       txHash: donation.txHash,
       dateText: formatDisplayDate(donation.donatedAt),
       sortTime: new Date(donation.donatedAt).getTime(),
@@ -534,10 +534,10 @@ export default function CampaignDetailPage() {
             {/* Amount Display */}
             <div className="text-center mb-6">
               <p className="text-3xl font-bold gradient-text">
-                {campaign.currentAmount.toFixed(4)} USDT
+                {campaign.currentAmount.toFixed(4)} ETH
               </p>
               <p className="text-sm text-slate-500 mt-1">
-                raised of {Number(campaign.targetAmount).toFixed(2)} USDT goal
+                raised of {Number(campaign.targetAmount).toFixed(2)} ETH goal
               </p>
             </div>
 
@@ -577,7 +577,7 @@ export default function CampaignDetailPage() {
 
                 <div>
                   <label className="block text-xs text-slate-500 mb-1.5">
-                    Donation Amount (USDT)
+                    Donation Amount (ETH)
                   </label>
                   <input
                     type="number"

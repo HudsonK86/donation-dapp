@@ -317,13 +317,13 @@ export function AdminDashboard() {
     {
       label: "Total Donations",
       value: stats ? formatStatAmount(stats.totalDonations) : "—",
-      unit: stats ? "USDT" : undefined,
+      unit: stats ? "ETH" : undefined,
       accentClass: "bg-sky-400",
     },
     {
       label: "Funds Released",
       value: stats ? formatStatAmount(stats.fundsReleased) : "—",
-      unit: stats ? "USDT" : undefined,
+      unit: stats ? "ETH" : undefined,
       accentClass: "bg-indigo-400",
     },
   ] satisfies StatCardItem[];
@@ -649,7 +649,7 @@ function StatCard({
           </div>
         )}
         <p className={`mt-2 h-4 text-xs font-semibold uppercase leading-4 tracking-[0.08em] text-slate-400 ${stat.unit ? "" : "invisible"}`}>
-          {stat.unit ?? "USDT"}
+          {stat.unit ?? "ETH"}
         </p>
       </div>
     </div>

@@ -471,7 +471,7 @@ export function EditCampaignModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-slate-500">
-                Target Amount (USDT) *
+                Target Amount (ETH) *
               </label>
               <input
                 type="number"
