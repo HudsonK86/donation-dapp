@@ -1,12 +1,11 @@
 /**
  * Database Seed Script
  *
- * Creates an initial admin user with the first Hardhat account wallet.
+ * Creates an initial admin user using the Sepolia deployer wallet.
  * This ensures the developer can access /admin immediately after setup.
  *
- * Hardhat Account #0:
- *   Address: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
- *   Private Key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+ * Sepolia Deployer (from backend/.env SEPOLIA_PRIVATE_KEY):
+ *   Address: 0xf4E1ADaa1E92DAaa937D15403F04fAEe24d441D5
  *
  * Usage:
  *   npx tsx prisma/seed.ts
@@ -18,8 +17,8 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Hardhat's first account — used as the default admin
-const ADMIN_WALLET_ADDRESS = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
+// Sepolia deployer wallet — used as the default admin
+const ADMIN_WALLET_ADDRESS = "0xf4e1adaa1e92daaa937d15403f04faee24d441d5";
 const ADMIN_USER_ID = "00000000-0000-0000-0000-000000000001";
 const ADMIN_WALLET_ID = "00000000-0000-0000-0000-000000000010";
 
@@ -58,9 +57,9 @@ async function main() {
       walletId: ADMIN_WALLET_ID,
       userId: admin.userId,
       walletAddress: ADMIN_WALLET_ADDRESS,
-      chainId: 31337,
+      chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID || 11155111),
       isPrimary: true,
-      walletLabel: "Admin Wallet (Hardhat #0)",
+      walletLabel: "Admin Wallet (Sepolia Deployer)",
     },
   });
 
@@ -73,15 +72,15 @@ async function main() {
   console.log("🌱 Seeding complete!");
   console.log("");
   console.log("📌 To access admin dashboard:");
-  console.log("   1. Import Hardhat Account #0 into MetaMask");
-  console.log("   2. Private Key: 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
-  console.log("   3. Connect wallet and go to /admin");
+  console.log("   1. Import your Sepolia deployer wallet into MetaMask");
+  console.log("      (private key from backend/.env -> SEPOLIA_PRIVATE_KEY)");
+  console.log("   2. Connect wallet and go to /admin");
   console.log("");
 }
 
 main()
-  .catch((e) => {
-    console.error("❌ Seed error:", e);
+  .catch((error) => {
+    console.error("❌ Seed failed:", error);
     process.exit(1);
   })
   .finally(async () => {

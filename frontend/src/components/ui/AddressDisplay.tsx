@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { toast } from "react-toastify";
+import { formatEthAmount } from "@/utils/format";
 
 interface ProfileResponse {
   user: {
@@ -270,8 +271,8 @@ function ProfileModal({
     { label: "Active Campaigns", value: stats ? stats.activeCampaigns : "-" },
   ];
   const amountStats = [
-    { label: "Total Donated", value: stats ? stats.totalDonated.toFixed(4) : "-" },
-    { label: "Received", value: stats ? receivedAmount.toFixed(4) : "-" },
+    { label: "Total Donated", value: stats ? formatEthAmount(stats.totalDonated) : "-" },
+    { label: "Received", value: stats ? formatEthAmount(receivedAmount) : "-" },
   ];
 
   return (

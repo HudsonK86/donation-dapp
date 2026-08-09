@@ -9,16 +9,7 @@ function toPublicCampaignStatus(status: string) {
   return status;
 }
 
-function isLocalHardhat() {
-  return (
-    process.env.NODE_ENV !== "production" &&
-    (process.env.NEXT_PUBLIC_CHAIN_ID === "31337" ||
-      process.env.NEXT_PUBLIC_RPC_URL?.includes("127.0.0.1") ||
-      process.env.NEXT_PUBLIC_RPC_URL?.includes("localhost"))
-  );
-}
-
-async function isLocalAdminWallet(walletAddress: string) {
+async function isAdminWallet(walletAddress: string) {
   if (!isAddress(walletAddress)) return false;
 
   const normalizedAddress = getAddress(walletAddress).toLowerCase();
@@ -37,17 +28,10 @@ async function isLocalAdminWallet(walletAddress: string) {
 
 export async function GET(request: Request) {
   try {
-    if (!isLocalHardhat()) {
-      return NextResponse.json(
-        { error: "Admin campaign list is only available in local development." },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const walletAddress = searchParams.get("walletAddress") || "";
 
-    if (!(await isLocalAdminWallet(walletAddress))) {
+    if (!(await isAdminWallet(walletAddress))) {
       return NextResponse.json(
         { error: "Admin wallet is required." },
         { status: 403 }

@@ -6,6 +6,8 @@ import { StatusBadge } from "@/components/campaigns/CampaignCard";
 import Link from "next/link";
 import { WalletProfilePanel } from "@/components/dashboard/WalletProfilePanel";
 import { AddressDisplay } from "@/components/ui/AddressDisplay";
+import { config } from "@/utils/config";
+import { formatEthAmount } from "@/utils/format";
 
 interface Stats {
   totalDonated: number;
@@ -107,7 +109,7 @@ export function UserDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           walletAddress: address,
-          chainId: 31337,
+          chainId: config.chainId,
         }),
       });
 
@@ -272,7 +274,7 @@ export function UserDashboard() {
                         </Link>
                       </td>
                       <td className="px-6 py-4 text-slate-600">
-                        {donation.amount.toFixed(4)} {donation.tokenSymbol}
+                        {formatEthAmount(donation.amount)} {donation.tokenSymbol}
                       </td>
                       <td className="px-6 py-4 text-xs text-slate-500">
                         <AddressDisplay
@@ -354,8 +356,8 @@ export function UserDashboard() {
                               )}
                             </span>
                             <span className="text-xs text-slate-400">
-                              {campaign.currentAmount.toFixed(2)} /{" "}
-                              {Number(campaign.targetAmount).toFixed(2)}{" "}
+                              {formatEthAmount(campaign.currentAmount)} /{" "}
+                              {formatEthAmount(Number(campaign.targetAmount))}{" "}
                               {campaign.tokenSymbol}
                             </span>
                           </div>

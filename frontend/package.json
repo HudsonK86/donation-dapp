@@ -16,7 +16,8 @@
     "db:reset:local": "tsx scripts/reset-local-db.ts && npm run db:seed",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "indexer": "tsx watch scripts/indexer.ts"
+    "indexer": "tsx watch scripts/indexer.ts",
+    "indexer:reindex": "tsx scripts/reindex-campaigns.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

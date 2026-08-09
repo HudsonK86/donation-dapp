@@ -9,6 +9,7 @@ import { useDonate, useClaimFunds, useGetCampaign } from "@/hooks/useContract";
 import { StatusBadge } from "@/components/campaigns/CampaignCard";
 import { AddressDisplay, shortenAddress } from "@/components/ui/AddressDisplay";
 import { toast } from "react-toastify";
+import { formatEthAmount, formatWei } from "@/utils/format";
 
 // -------------------------------------------------------------------
 //  Types
@@ -46,7 +47,7 @@ interface Campaign {
   campaignDeadline?: string | null;
   createTxHash?: string;
   createdAt: string;
-  images: { imageUrl: string }[];
+  imageUrl?: string | null;
   creator?: { fullName: string | null };
   beneficiaryWallet?: { walletAddress: string };
   donations: Donation[];
@@ -70,7 +71,7 @@ interface TransactionRow {
 
 function formatTokenAmount(wei: string | undefined) {
   if (!wei) return "—";
-  return (Number(wei) / 1e18).toFixed(4);
+  return formatWei(wei);
 }
 
 function formatDisplayDate(value: string | undefined) {
@@ -123,7 +124,7 @@ function buildTransactionRows(campaign: Campaign): TransactionRow[] {
       id: `donation-${donation.donationId}`,
       eventType: "DonationReceived",
       fromAddress: donation.donorWallet?.walletAddress,
-      amountText: `${Number(donation.donationAmount).toFixed(4)} ETH`,
+      amountText: `${formatEthAmount(Number(donation.donationAmount))} ETH`,
       txHash: donation.txHash,
       dateText: formatDisplayDate(donation.donatedAt),
       sortTime: new Date(donation.donatedAt).getTime(),
@@ -322,7 +323,7 @@ export default function CampaignDetailPage() {
       : isOnChainLoading
         ? "Checking current smart contract campaign..."
         : isOnChainError || isOnChainDifferent
-          ? "This database campaign is no longer linked to the current local Hardhat chain. Go back to Campaigns and open the newly created campaign."
+          ? "This database campaign is no longer linked to the current Sepolia contract. Go back to Campaigns and open the newly created campaign."
           : onChainIsReleased
             ? "Funds have already been released on chain."
             : onChainIsActive === false
@@ -534,10 +535,10 @@ export default function CampaignDetailPage() {
             {/* Amount Display */}
             <div className="text-center mb-6">
               <p className="text-3xl font-bold gradient-text">
-                {campaign.currentAmount.toFixed(4)} ETH
+                {formatEthAmount(campaign.currentAmount)} ETH
               </p>
               <p className="text-sm text-slate-500 mt-1">
-                raised of {Number(campaign.targetAmount).toFixed(2)} ETH goal
+                raised of {formatEthAmount(Number(campaign.targetAmount))} ETH goal
               </p>
             </div>
 

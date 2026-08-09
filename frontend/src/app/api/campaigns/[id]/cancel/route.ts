@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { config } from "@/utils/config";
 import { DONATION_ESCROW_ABI } from "@/utils/contract";
 import { createPublicClient, decodeEventLog, http } from "viem";
-import { hardhat } from "viem/chains";
+import { sepolia } from "viem/chains";
 
 const publicClient = createPublicClient({
-  chain: hardhat,
+  chain: sepolia,
   transport: http(config.rpcUrl),
 });
 

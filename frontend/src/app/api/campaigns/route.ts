@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
             wallets: {
               create: {
                 walletAddress: normalizedBeneficiaryAddress,
-                chainId: 31337,
+                chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID || 11155111),
                 isPrimary: true,
                 walletLabel: "Beneficiary Wallet",
               },

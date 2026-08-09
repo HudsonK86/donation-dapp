@@ -10,7 +10,7 @@ import {
   isAddress,
   parseEther,
 } from "viem";
-import { hardhat } from "viem/chains";
+import { sepolia } from "viem/chains";
 
 function toPublicCampaignStatus(status: string) {
   if (status === "released" || status === "funded") return "released";
@@ -19,7 +19,7 @@ function toPublicCampaignStatus(status: string) {
 }
 
 const publicClient = createPublicClient({
-  chain: hardhat,
+  chain: sepolia,
   transport: http(config.rpcUrl),
 });
 

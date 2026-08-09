@@ -7,7 +7,7 @@ import { AppKitProvider, createAppKit } from "@reown/appkit/react";
 import { config as appConfig } from "@/utils/config";
 import {
   appkitNetworks,
-  hardhatNetwork,
+  donationNetwork,
   projectId,
   queryClient,
   wagmiAdapter,
@@ -18,7 +18,7 @@ createAppKit({
   adapters: [wagmiAdapter],
   projectId,
   networks: appkitNetworks,
-  defaultNetwork: hardhatNetwork,
+  defaultNetwork: donationNetwork,
   metadata: {
     name: appConfig.appName,
     description: appConfig.appDescription,
@@ -42,7 +42,7 @@ export default function Web3Provider({
       adapters={[wagmiAdapter]}
       projectId={projectId}
       networks={appkitNetworks}
-      defaultNetwork={hardhatNetwork}
+      defaultNetwork={donationNetwork}
       metadata={{
         name: appConfig.appName,
         description: appConfig.appDescription,

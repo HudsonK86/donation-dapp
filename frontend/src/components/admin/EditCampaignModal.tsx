@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPublicClient, getAddress, http, isAddress, type Hash } from "viem";
-import { hardhat } from "viem/chains";
+import { sepolia } from "viem/chains";
 import { useUpdateCampaignTerms } from "@/hooks/useContract";
 import { config } from "@/utils/config";
 import { toast } from "react-toastify";
@@ -30,7 +30,7 @@ interface EditCampaignModalProps {
 }
 
 const publicClient = createPublicClient({
-  chain: hardhat,
+  chain: sepolia,
   transport: http(config.rpcUrl),
 });
 

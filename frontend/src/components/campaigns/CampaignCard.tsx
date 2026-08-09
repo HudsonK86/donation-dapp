@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatEthAmount } from "@/utils/format";
 
 interface CampaignCardProps {
   campaignId: string;
@@ -68,10 +69,10 @@ export function CampaignCard({
         <div className="mb-4">
           <div className="flex justify-between text-xs text-slate-500 mb-1">
             <span>
-              {currentAmount.toFixed(2)} {tokenSymbol}
+              {formatEthAmount(currentAmount)} {tokenSymbol}
             </span>
             <span>
-              {targetAmount.toFixed(2)} {tokenSymbol}
+              {formatEthAmount(targetAmount)} {tokenSymbol}
             </span>
           </div>
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">

@@ -9,9 +9,9 @@ import { config } from "@/utils/config";
 export const projectId =
   config.walletConnectProjectId || "local-dev-project-id";
 
-export const hardhatNetwork = defineChain({
+export const donationNetwork = defineChain({
   id: config.chainId,
-  name: "DonateChain Local",
+  name: config.networkName || "Sepolia",
   chainNamespace: "eip155",
   caipNetworkId: `eip155:${config.chainId}`,
   nativeCurrency: {
@@ -23,9 +23,12 @@ export const hardhatNetwork = defineChain({
     default: { http: [config.rpcUrl] },
     public: { http: [config.rpcUrl] },
   },
+  blockExplorers: {
+    default: { name: "Etherscan", url: "https://sepolia.etherscan.io" },
+  },
 });
 
-export const appkitNetworks: [typeof hardhatNetwork] = [hardhatNetwork];
+export const appkitNetworks: [typeof donationNetwork] = [donationNetwork];
 
 if (!config.walletConnectProjectId) {
   console.warn(

@@ -4,6 +4,7 @@ import { useAppKitAccount } from "@reown/appkit/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 import { toast } from "react-toastify";
+import { config } from "@/utils/config";
 
 interface WalletProfile {
   fullName: string | null;
@@ -91,7 +92,7 @@ export function WalletProfilePanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         walletAddress: address,
-        chainId: 31337,
+        chainId: config.chainId,
       }),
     });
 

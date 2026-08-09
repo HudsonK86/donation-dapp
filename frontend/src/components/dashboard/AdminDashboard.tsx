@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { createPublicClient, http, type Hash } from "viem";
-import { hardhat } from "viem/chains";
+import { sepolia } from "viem/chains";
 import { StatusBadge } from "@/components/campaigns/CampaignCard";
 import { CreateCampaignModal } from "@/components/admin/CreateCampaignModal";
 import {
@@ -16,6 +16,7 @@ import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useCancelCampaign } from "@/hooks/useContract";
 import { config } from "@/utils/config";
 import { toast } from "react-toastify";
+import { formatEthAmount } from "@/utils/format";
 
 // -------------------------------------------------------------------
 //  Types
@@ -100,7 +101,7 @@ function formatStatAmount(amount: number) {
 }
 
 const publicClient = createPublicClient({
-  chain: hardhat,
+  chain: sepolia,
   transport: http(config.rpcUrl),
 });
 
@@ -426,8 +427,8 @@ export function AdminDashboard() {
                             )}
                           </span>
                           <span className="text-xs text-slate-400">
-                            {campaign.currentAmount.toFixed(2)} /{" "}
-                            {Number(campaign.targetAmount).toFixed(2)}{" "}
+                            {formatEthAmount(campaign.currentAmount)} /{" "}
+                            {formatEthAmount(Number(campaign.targetAmount))}{" "}
                             {campaign.tokenSymbol}
                           </span>
                         </div>
@@ -585,7 +586,7 @@ function CancelCampaignConfirmModal({
             <div>
               <p className="font-medium text-slate-400">Target</p>
               <p className="mt-1 text-slate-700">
-                {campaign.targetAmount.toFixed(2)} {campaign.tokenSymbol}
+                {formatEthAmount(campaign.targetAmount)} {campaign.tokenSymbol}
               </p>
             </div>
             <div>

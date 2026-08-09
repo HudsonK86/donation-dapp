@@ -1,6 +1,7 @@
 "use client";
 import { useAppKitAccount } from "@reown/appkit/react";
 import { useEffect } from "react";
+import { config } from "@/utils/config";
 
 export function WalletAuth() {
   const { address, isConnected } = useAppKitAccount();
@@ -13,7 +14,7 @@ export function WalletAuth() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           walletAddress: address,
-          chainId: 31337,
+          chainId: config.chainId,
         }),
       })
         .then((res) => res.json())

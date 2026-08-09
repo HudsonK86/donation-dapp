@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const normalizedAddress = walletAddress.trim().toLowerCase();
     const parsedChainId = typeof chainId === "number"
       ? chainId
-      : Number(chainId) || 31337;
+      : Number(chainId) || Number(process.env.NEXT_PUBLIC_CHAIN_ID || 11155111);
 
     // Check if wallet already exists
     const existingWallet = await prisma.wallet.findUnique({

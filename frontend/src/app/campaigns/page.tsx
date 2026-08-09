@@ -12,7 +12,7 @@ interface Campaign {
   tokenSymbol: string;
   campaignStatus: string;
   campaignDeadline?: string | null;
-  images: { imageUrl: string }[];
+  imageUrl?: string | null;
   _count: { donations: number };
 }
 
@@ -153,7 +153,7 @@ export default function CampaignsPage() {
                 campaignId={campaign.campaignId}
                 title={campaign.campaignTitle}
                 description={campaign.campaignDescription}
-                imageUrl={campaign.imageUrl}
+                imageUrl={campaign.imageUrl ?? undefined}
                 targetAmount={Number(campaign.targetAmount)}
                 currentAmount={campaign.currentAmount}
                 status={campaign.campaignStatus}

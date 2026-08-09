@@ -1,7 +1,7 @@
 /**
  * Event Indexer — Blockchain Event Listener
  *
- * This script listens for smart contract events on the Hardhat local blockchain
+ * This script listens for smart contract events on the Sepolia testnet
  * and syncs them to the PostgreSQL database via Prisma.
  *
  * Events monitored:
@@ -24,7 +24,7 @@ import {
   http,
   type Log,
 } from "viem";
-import { hardhat } from "viem/chains";
+import { sepolia } from "viem/chains";
 import { PrismaClient } from "@prisma/client";
 import { DONATION_ESCROW_ABI } from "../src/utils/contract";
 
@@ -41,12 +41,34 @@ if (!CONTRACT_ADDRESS) {
 
 // Create Viem public client
 const client = createPublicClient({
-  chain: hardhat,
+  chain: sepolia,
   transport: http(RPC_URL),
 });
 
-const MATCH_ATTEMPTS = 10;
-const MATCH_DELAY_MS = 500;
+// For DonationReceived the frontend POST can take 30+ seconds on cold
+// compile (Next.js dev mode compiles the API route on first request, which
+// can take 15+ seconds). The previous 5-second window caused the indexer
+// to give up before the off-chain donation row was written, resulting in
+// the donation being visible on-chain but missing from the database.
+//
+// The 60-second window below matches the CampaignCreated handling above
+// and comfortably covers cold-compile latency while still failing fast on
+// genuinely missing transactions.
+const MATCH_ATTEMPTS = 60;
+const MATCH_DELAY_MS = 1000; // 60s total window for the slow DB write
+
+// For CampaignCreated the frontend POST can take 30+ seconds (image
+// upload + DB write). The retry window above covers only 5 seconds, so we
+// accept the race and instead expose a manual reindex entry point.
+//
+// The indexer will:
+//  1. Try the primary lookup (createTxHash) for the basic retry window.
+//  2. Log the tx hash so the operator can backfill later via the
+//     `npm run indexer:reindex` script beyond `MATCH_ATTEMPTS`.
+//  3. Fall back to on-chain ID lookup so newly-orphaned campaigns are
+//     picked up here even if the createTxHash race is lost.
+const EXTENDED_ATTEMPTS = 60;
+const EXTENDED_DELAY_MS = 1000; // 60s total window for the slow DB write
 
 // Lookup a campaign row by its on-chain create transaction hash. With the
 // single-step creation flow (POST /api/campaigns after the on-chain tx
@@ -55,13 +77,13 @@ const MATCH_DELAY_MS = 500;
 // event being emitted. The retry loop is kept as a safety net for slow
 // Prisma queries or transient DB hiccups.
 async function findCampaignByCreateTxHash(txHash: string) {
-  for (let attempt = 1; attempt <= MATCH_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= EXTENDED_ATTEMPTS; attempt += 1) {
     const campaign = await prisma.campaign.findFirst({
       where: { createTxHash: txHash },
     });
 
     if (campaign) return campaign;
-    if (attempt < MATCH_ATTEMPTS) await sleep(MATCH_DELAY_MS);
+    if (attempt < EXTENDED_ATTEMPTS) await sleep(EXTENDED_DELAY_MS);
   }
 
   return null;
@@ -78,7 +100,7 @@ async function findCampaignByCreateTxHash(txHash: string) {
 // Hardhat restart) are skipped so we don't accidentally reattach events
 // to a campaign that was deliberately removed from the chain.
 async function findCampaignByOnChainId(onChainCampaignId: bigint) {
-  for (let attempt = 1; attempt <= MATCH_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= EXTENDED_ATTEMPTS; attempt += 1) {
     const campaign = await prisma.campaign.findFirst({
       where: {
         onChainCampaignId,
@@ -87,7 +109,7 @@ async function findCampaignByOnChainId(onChainCampaignId: bigint) {
     });
 
     if (campaign) return campaign;
-    if (attempt < MATCH_ATTEMPTS) await sleep(MATCH_DELAY_MS);
+    if (attempt < EXTENDED_ATTEMPTS) await sleep(EXTENDED_DELAY_MS);
   }
 
   return null;
@@ -135,7 +157,7 @@ async function resolveBeneficiaryWallet(walletAddress: string) {
       wallets: {
         create: {
           walletAddress: normalizedAddress,
-          chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID || 31337),
+          chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID || 11155111),
           isPrimary: true,
         },
       },

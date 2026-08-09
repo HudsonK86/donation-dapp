@@ -140,7 +140,7 @@ export default function HomePage() {
       <footer className="section-gradient-footer px-6 py-8">
         <div className="mx-auto max-w-6xl flex items-center justify-between text-sm text-slate-500">
           <p>© 2026 DonateChain. Blockchain Donation Platform.</p>
-          <p>Built with Next.js, Solidity & Hardhat</p>
+          <p>Built with Next.js, Solidity & deployed on Sepolia Testnet</p>
         </div>
       </footer>
     </div>

@@ -11,7 +11,7 @@ import {
   type Hash,
   type TransactionReceipt,
 } from "viem";
-import { hardhat } from "viem/chains";
+import { sepolia } from "viem/chains";
 import { useCreateCampaign } from "@/hooks/useContract";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { config } from "@/utils/config";
@@ -25,7 +25,7 @@ interface CreateCampaignModalProps {
 }
 
 const publicClient = createPublicClient({
-  chain: hardhat,
+  chain: sepolia,
   transport: http(config.rpcUrl),
 });
 
@@ -52,7 +52,7 @@ async function waitForReceipt(txHash: Hash) {
 
   const timeout = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
-      reject(new Error("Timed out waiting for the local blockchain confirmation."));
+      reject(new Error("Timed out waiting for the Sepolia transaction confirmation."));
     }, 60_000);
   });
 
@@ -85,7 +85,7 @@ async function ensureDonationEscrowReady() {
     });
   } catch {
     throw new Error(
-      `Cannot reach Hardhat RPC at ${config.rpcUrl}. Start the Hardhat node and try again.`
+      `Cannot reach Sepolia RPC at ${config.rpcUrl}. Check your network connection and try again.`
     );
   }
 
