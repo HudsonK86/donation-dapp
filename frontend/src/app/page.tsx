@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { CONTRACTS, getExplorerUrl } from "@/lib/contracts";
 
 export default function HomePage() {
+  const escrow = CONTRACTS.donationEscrow;
+  const escrowUrl = getExplorerUrl(escrow);
+
   return (
     <div className="relative overflow-hidden">
       {/* Hero Section */}
@@ -42,6 +46,52 @@ export default function HomePage() {
             >
               My Dashboard
             </Link>
+          </div>
+
+          {/* Verify Our Smart Contract — trust strip */}
+          <div className="mt-14 mx-auto max-w-2xl text-left">
+            <div className="rounded-2xl border border-slate-200 bg-white/70 backdrop-blur p-6 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 mb-2">
+                <span className="text-lg">🔗</span>
+                <span>Verify Our Smart Contract</span>
+              </div>
+
+              <p className="text-sm text-slate-500 mb-4">
+                All donations are held by an on-chain escrow. No middlemen, no
+                hidden fees — anyone can audit the contract on Etherscan.
+              </p>
+
+              <a
+                href={escrowUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 hover:border-indigo-300 hover:bg-white transition"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                    {escrow.name}
+                  </div>
+                  <div className="font-mono text-sm text-slate-700 truncate">
+                    {escrow.address}
+                  </div>
+                </div>
+                <span className="text-indigo-600 text-sm font-medium whitespace-nowrap group-hover:translate-x-0.5 transition">
+                  View on Etherscan ↗
+                </span>
+              </a>
+
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                <span>
+                  🌐 <strong className="text-slate-700">Network:</strong>{" "}
+                  {escrow.network}
+                </span>
+                <span className="text-slate-300">|</span>
+                <span>
+                  🔢 <strong className="text-slate-700">Chain ID:</strong>{" "}
+                  {escrow.chainId}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { toast } from "react-toastify";
 import { formatEthAmount } from "@/utils/format";
+import { getExplorerTxUrl } from "@/lib/contracts";
 
 interface ProfileResponse {
   user: {
@@ -224,9 +225,15 @@ export function AddressDisplay({
           {shortenAddress(normalizedAddress)}
         </button>
       ) : (
-        <span className="font-mono text-inherit">
+        <a
+          href={getExplorerTxUrl(normalizedAddress)}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="View transaction on Etherscan"
+          className="cursor-pointer rounded-sm font-mono text-inherit underline-offset-4 transition-colors hover:text-indigo-600 hover:underline"
+        >
           {shortenAddress(normalizedAddress)}
-        </span>
+        </a>
       )}
 
       <button
