@@ -36,3 +36,4 @@ npm-debug.log*
 
 # Uploads (runtime data, not source)
 /uploads/
+/frontend/public/uploads/
