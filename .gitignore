@@ -30,3 +30,9 @@ prisma/migrations/
 
 # Debug
 npm-debug.log*
+
+# Documents
+/document/
+
+# Uploads (runtime data, not source)
+/uploads/
