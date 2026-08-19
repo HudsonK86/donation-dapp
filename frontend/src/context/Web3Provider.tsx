@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
 import { AppKitProvider, createAppKit } from "@reown/appkit/react";
