@@ -27,36 +27,21 @@ export default function HomePage() {
             <span className="block gradient-text mt-2">Verified On-Chain</span>
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-500 leading-relaxed">
-            DonateChain uses smart contract escrow to ensure every donation is
-            traceable, accountable, and automatically released to beneficiaries
-            when campaign targets are met.
-          </p>
-
-          <div className="mt-10 flex items-center justify-center gap-4">
-            <Link
-              href="/campaigns"
-              className="rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-600 transition-all duration-200 hover:shadow-indigo-500/40 hover:-translate-y-0.5"
-            >
-              Browse Campaigns
-            </Link>
-            <Link
-              href="/dashboard"
-              className="rounded-xl border border-slate-300 bg-white px-8 py-3.5 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-all duration-200 hover:-translate-y-0.5 shadow-sm"
-            >
-              My Dashboard
-            </Link>
-          </div>
-
-          {/* Verify Our Smart Contract — trust strip */}
-          <div className="mt-14 mx-auto max-w-2xl text-left">
+          {/* Unified trust card — description + contract verification */}
+          <div className="mt-10 mx-auto max-w-2xl text-left">
             <div className="rounded-2xl border border-slate-200 bg-white/70 backdrop-blur p-6 shadow-sm">
+              <p className="text-sm text-slate-500 mb-5 leading-relaxed">
+                DonateChain uses smart contract escrow to ensure every donation is
+                traceable, accountable, and automatically released to beneficiaries
+                when campaign targets are met.
+              </p>
+
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 mb-2">
                 <span className="text-lg">🔗</span>
                 <span>Verify Our Smart Contract</span>
               </div>
 
-              <p className="text-sm text-slate-500 mb-4">
+              <p className="text-xs text-slate-500 mb-4">
                 All donations are held by an on-chain escrow. No middlemen, no
                 hidden fees — anyone can audit the contract on Etherscan.
               </p>
@@ -93,6 +78,22 @@ export default function HomePage() {
               </div>
             </div>
           </div>
+
+          <div className="mt-10 flex items-center justify-center gap-4">
+            <Link
+              href="/campaigns"
+              className="rounded-xl bg-indigo-500 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-600 transition-all duration-200 hover:shadow-indigo-500/40 hover:-translate-y-0.5"
+            >
+              Browse Campaigns
+            </Link>
+            <Link
+              href="/dashboard"
+              className="rounded-xl border border-slate-300 bg-white px-8 py-3.5 text-sm font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-600 transition-all duration-200 hover:-translate-y-0.5 shadow-sm"
+            >
+              My Dashboard
+            </Link>
+          </div>
+
         </div>
       </section>
 

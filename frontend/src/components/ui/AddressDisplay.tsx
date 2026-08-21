@@ -330,7 +330,7 @@ function ProfileModal({
 
         <div className="mt-6 rounded-xl border border-slate-100 bg-slate-50 p-4">
           <p className="text-xs font-medium uppercase text-slate-400">Bio</p>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600 whitespace-pre-wrap">{bio}</p>
+          <p style={{ whiteSpace: 'pre-wrap' }} className="mt-2 text-sm leading-relaxed text-slate-600">{bio}</p>
         </div>
 
         <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-100 p-4">

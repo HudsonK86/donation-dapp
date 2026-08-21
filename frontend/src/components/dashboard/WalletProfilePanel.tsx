@@ -278,7 +278,7 @@ export function WalletProfilePanel({
                       <p className="mt-1 text-sm font-medium text-slate-500">
                         {displayEmail}
                       </p>
-                      <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">
+                      <p style={{ whiteSpace: 'pre-wrap' }} className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">
                         {displayBio}
                       </p>
                     </>
