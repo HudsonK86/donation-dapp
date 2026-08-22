@@ -37,3 +37,6 @@ npm-debug.log*
 # Uploads (runtime data, not source)
 /uploads/
 /frontend/public/uploads/
+
+# DB dump (runtime data only)
+donation_dapp_dump.sql
