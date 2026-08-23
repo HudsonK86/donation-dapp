@@ -40,3 +40,6 @@ npm-debug.log*
 
 # DB dump (runtime data only)
 donation_dapp_dump.sql
+
+# Deployment configs (contain server-specific info)
+/deploy/
