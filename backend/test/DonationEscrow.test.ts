@@ -20,6 +20,7 @@ describe("DonationEscrow", function () {
   let donor2: any;
   let beneficiary: any;
   let publicClient: any;
+  let networkHelpers: any;
 
   const TARGET_AMOUNT = parseEther("10");
   const DEADLINE = 9999999999n;
@@ -27,6 +28,7 @@ describe("DonationEscrow", function () {
   beforeEach(async function () {
     const conn = await network.connect();
     viem = conn.viem;
+    networkHelpers = conn.networkHelpers;
     publicClient = await viem.getPublicClient();
     const clients = await viem.getWalletClients();
     owner = clients[0];
@@ -88,6 +90,18 @@ describe("DonationEscrow", function () {
         "InvalidTargetAmount"
       );
     });
+
+    it("should revert if the deadline is not in the future", async function () {
+      const currentTimestamp = BigInt(await networkHelpers.time.latest());
+
+      await expectRevert(
+        escrow.write.createCampaign(
+          [beneficiary.account.address, TARGET_AMOUNT, currentTimestamp],
+          { account: admin.account }
+        ),
+        "Deadline must be in the future"
+      );
+    });
   });
 
   describe("donateToCampaign", function () {
@@ -132,6 +146,25 @@ describe("DonationEscrow", function () {
       await expectRevert(
         escrow.write.donateToCampaign([999n], { account: donor1.account, value: parseEther("1") }),
         "CampaignNotFound"
+      );
+    });
+
+    it("should reject donations after the campaign deadline", async function () {
+      const currentTimestamp = BigInt(await networkHelpers.time.latest());
+      const shortDeadline = currentTimestamp + 100n;
+
+      await escrow.write.createCampaign(
+        [beneficiary.account.address, TARGET_AMOUNT, shortDeadline],
+        { account: admin.account }
+      );
+      await networkHelpers.time.increaseTo(shortDeadline + 1n);
+
+      await expectRevert(
+        escrow.write.donateToCampaign([1n], {
+          account: donor1.account,
+          value: parseEther("1"),
+        }),
+        "CampaignExpired"
       );
     });
   });
@@ -198,6 +231,236 @@ describe("DonationEscrow", function () {
     });
   });
 
+  describe("claimFunds", function () {
+    let shortDeadline: bigint;
+
+    beforeEach(async function () {
+      const currentTimestamp = BigInt(await networkHelpers.time.latest());
+      shortDeadline = currentTimestamp + 100n;
+
+      await escrow.write.createCampaign(
+        [beneficiary.account.address, TARGET_AMOUNT, shortDeadline],
+        { account: admin.account }
+      );
+    });
+
+    it("should release donated funds to the beneficiary after the deadline", async function () {
+      const donationAmount = parseEther("3");
+      await escrow.write.donateToCampaign([0n], {
+        account: donor1.account,
+        value: donationAmount,
+      });
+
+      const beneficiaryBalanceBefore = await publicClient.getBalance({
+        address: beneficiary.account.address,
+      });
+      await networkHelpers.time.increaseTo(shortDeadline + 1n);
+
+      const hash = await escrow.write.claimFunds([0n], {
+        account: donor2.account,
+      });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      expect(receipt.status).to.equal("success");
+
+      const campaign = await escrow.read.getCampaign([0n]);
+      expect(campaign.isActive).to.be.false;
+      expect(campaign.isReleased).to.be.true;
+
+      const beneficiaryBalanceAfter = await publicClient.getBalance({
+        address: beneficiary.account.address,
+      });
+      expect(beneficiaryBalanceAfter - beneficiaryBalanceBefore).to.equal(
+        donationAmount
+      );
+    });
+
+    it("should reject a claim before the deadline", async function () {
+      await escrow.write.donateToCampaign([0n], {
+        account: donor1.account,
+        value: parseEther("1"),
+      });
+
+      await expectRevert(
+        escrow.write.claimFunds([0n], { account: donor1.account }),
+        "Deadline has not passed yet"
+      );
+    });
+
+    it("should reject a claim when no funds were donated", async function () {
+      await networkHelpers.time.increaseTo(shortDeadline + 1n);
+
+      await expectRevert(
+        escrow.write.claimFunds([0n], { account: donor1.account }),
+        "No funds to claim"
+      );
+    });
+
+    it("should reject a second claim after funds are released", async function () {
+      await escrow.write.donateToCampaign([0n], {
+        account: donor1.account,
+        value: parseEther("1"),
+      });
+      await networkHelpers.time.increaseTo(shortDeadline + 1n);
+      await escrow.write.claimFunds([0n], { account: donor1.account });
+
+      await expectRevert(
+        escrow.write.claimFunds([0n], { account: donor2.account }),
+        "CampaignNotActive"
+      );
+    });
+  });
+
+  describe("updateCampaignTerms", function () {
+    beforeEach(async function () {
+      await escrow.write.createCampaign(
+        [beneficiary.account.address, TARGET_AMOUNT, DEADLINE],
+        { account: admin.account }
+      );
+    });
+
+    it("should allow the campaign administrator to update terms before donations", async function () {
+      const newTarget = parseEther("20");
+      const newDeadline = DEADLINE - 1n;
+
+      const hash = await escrow.write.updateCampaignTerms(
+        [0n, donor2.account.address, newTarget, newDeadline],
+        { account: admin.account }
+      );
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      expect(receipt.status).to.equal("success");
+
+      const campaign = await escrow.read.getCampaign([0n]);
+      expect(campaign.beneficiary.toLowerCase()).to.equal(
+        donor2.account.address.toLowerCase()
+      );
+      expect(campaign.targetAmount).to.equal(newTarget);
+      expect(campaign.deadline).to.equal(newDeadline);
+    });
+
+    it("should reject an update by a non-administrator", async function () {
+      await expectRevert(
+        escrow.write.updateCampaignTerms(
+          [0n, donor2.account.address, TARGET_AMOUNT, DEADLINE - 1n],
+          { account: donor1.account }
+        ),
+        "NotCampaignAdmin"
+      );
+    });
+
+    it("should reject an update after a donation has been received", async function () {
+      await escrow.write.donateToCampaign([0n], {
+        account: donor1.account,
+        value: parseEther("1"),
+      });
+
+      await expectRevert(
+        escrow.write.updateCampaignTerms(
+          [0n, donor2.account.address, TARGET_AMOUNT, DEADLINE - 1n],
+          { account: admin.account }
+        ),
+        "CampaignHasDonations"
+      );
+    });
+
+    it("should reject an invalid beneficiary", async function () {
+      await expectRevert(
+        escrow.write.updateCampaignTerms(
+          [0n, zeroAddress, TARGET_AMOUNT, DEADLINE - 1n],
+          { account: admin.account }
+        ),
+        "InvalidBeneficiary"
+      );
+    });
+
+    it("should reject a zero target amount", async function () {
+      await expectRevert(
+        escrow.write.updateCampaignTerms(
+          [0n, beneficiary.account.address, 0n, DEADLINE - 1n],
+          { account: admin.account }
+        ),
+        "InvalidTargetAmount"
+      );
+    });
+
+    it("should reject a deadline that is not in the future", async function () {
+      const currentTimestamp = BigInt(await networkHelpers.time.latest());
+
+      await expectRevert(
+        escrow.write.updateCampaignTerms(
+          [0n, beneficiary.account.address, TARGET_AMOUNT, currentTimestamp],
+          { account: admin.account }
+        ),
+        "Deadline must be in the future"
+      );
+    });
+  });
+
+  describe("cancelCampaign", function () {
+    beforeEach(async function () {
+      await escrow.write.createCampaign(
+        [beneficiary.account.address, TARGET_AMOUNT, DEADLINE],
+        { account: admin.account }
+      );
+    });
+
+    it("should allow the administrator to cancel a campaign before donations", async function () {
+      const hash = await escrow.write.cancelCampaign([0n], {
+        account: admin.account,
+      });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      expect(receipt.status).to.equal("success");
+
+      const campaign = await escrow.read.getCampaign([0n]);
+      expect(campaign.isActive).to.be.false;
+      expect(campaign.isCancelled).to.be.true;
+      expect(campaign.isReleased).to.be.false;
+    });
+
+    it("should reject cancellation by a non-administrator", async function () {
+      await expectRevert(
+        escrow.write.cancelCampaign([0n], { account: donor1.account }),
+        "NotCampaignAdmin"
+      );
+    });
+
+    it("should reject cancellation after a donation has been received", async function () {
+      await escrow.write.donateToCampaign([0n], {
+        account: donor1.account,
+        value: parseEther("1"),
+      });
+
+      await expectRevert(
+        escrow.write.cancelCampaign([0n], { account: admin.account }),
+        "CampaignHasDonations"
+      );
+    });
+
+    it("should reject donations to a cancelled campaign", async function () {
+      await escrow.write.cancelCampaign([0n], { account: admin.account });
+
+      await expectRevert(
+        escrow.write.donateToCampaign([0n], {
+          account: donor1.account,
+          value: parseEther("1"),
+        }),
+        "CampaignNotActive"
+      );
+    });
+  });
+
+  describe("Direct transfers", function () {
+    it("should reject ETH sent directly to the contract", async function () {
+      await expectRevert(
+        donor1.sendTransaction({
+          account: donor1.account,
+          to: escrow.address,
+          value: parseEther("1"),
+        }),
+        "Use donateToCampaign(uint256) to donate"
+      );
+    });
+  });
+
   describe("View functions", function () {
     it("getCampaignCount should return the correct count", async function () {
       expect(await escrow.read.getCampaignCount()).to.equal(0n);
@@ -207,6 +470,13 @@ describe("DonationEscrow", function () {
 
       await escrow.write.createCampaign([beneficiary.account.address, TARGET_AMOUNT, DEADLINE], { account: admin.account });
       expect(await escrow.read.getCampaignCount()).to.equal(2n);
+    });
+
+    it("getCampaign should reject a non-existent campaign", async function () {
+      await expectRevert(
+        escrow.read.getCampaign([999n]),
+        "CampaignNotFound"
+      );
     });
   });
 });
