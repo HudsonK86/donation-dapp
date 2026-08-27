@@ -12,8 +12,9 @@ import {
 } from "viem";
 import { sepolia } from "viem/chains";
 
-function toPublicCampaignStatus(status: string) {
+function toPublicCampaignStatus(status: string, deadline: Date | null | undefined) {
   if (status === "released" || status === "funded") return "released";
+  if (status === "active" && deadline && new Date() > deadline) return "expired";
   if (status === "active") return "active";
   return status;
 }
@@ -238,7 +239,7 @@ export async function GET(
         ...campaign,
         targetAmount: Number(campaign.targetAmount),
         tokenSymbol: "ETH",
-        campaignStatus: toPublicCampaignStatus(campaign.campaignStatus),
+        campaignStatus: toPublicCampaignStatus(campaign.campaignStatus, campaign.campaignDeadline),
         onChainCampaignId: campaign.onChainCampaignId != null
           ? Number(campaign.onChainCampaignId)
           : null,

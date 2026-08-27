@@ -257,7 +257,7 @@ describe("DonationEscrow", function () {
       await networkHelpers.time.increaseTo(shortDeadline + 1n);
 
       const hash = await escrow.write.claimFunds([0n], {
-        account: donor2.account,
+        account: beneficiary.account,
       });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       expect(receipt.status).to.equal("success");
@@ -270,7 +270,7 @@ describe("DonationEscrow", function () {
         address: beneficiary.account.address,
       });
       expect(beneficiaryBalanceAfter - beneficiaryBalanceBefore).to.equal(
-        donationAmount
+        donationAmount - receipt.gasUsed * receipt.effectiveGasPrice
       );
     });
 
@@ -281,7 +281,7 @@ describe("DonationEscrow", function () {
       });
 
       await expectRevert(
-        escrow.write.claimFunds([0n], { account: donor1.account }),
+        escrow.write.claimFunds([0n], { account: beneficiary.account }),
         "Deadline has not passed yet"
       );
     });
@@ -290,7 +290,7 @@ describe("DonationEscrow", function () {
       await networkHelpers.time.increaseTo(shortDeadline + 1n);
 
       await expectRevert(
-        escrow.write.claimFunds([0n], { account: donor1.account }),
+        escrow.write.claimFunds([0n], { account: beneficiary.account }),
         "No funds to claim"
       );
     });
@@ -301,11 +301,24 @@ describe("DonationEscrow", function () {
         value: parseEther("1"),
       });
       await networkHelpers.time.increaseTo(shortDeadline + 1n);
-      await escrow.write.claimFunds([0n], { account: donor1.account });
+      await escrow.write.claimFunds([0n], { account: beneficiary.account });
+
+      await expectRevert(
+        escrow.write.claimFunds([0n], { account: beneficiary.account }),
+        "CampaignNotActive"
+      );
+    });
+
+    it("should reject a claim by a non-beneficiary account", async function () {
+      await escrow.write.donateToCampaign([0n], {
+        account: donor1.account,
+        value: parseEther("1"),
+      });
+      await networkHelpers.time.increaseTo(shortDeadline + 1n);
 
       await expectRevert(
         escrow.write.claimFunds([0n], { account: donor2.account }),
-        "CampaignNotActive"
+        "NotBeneficiary"
       );
     });
   });

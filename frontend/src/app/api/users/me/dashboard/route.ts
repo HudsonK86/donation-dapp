@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-function toPublicCampaignStatus(status: string) {
-  return status === "released" || status === "funded" ? "released" : "active";
+function toPublicCampaignStatus(status: string, deadline: Date | null | undefined) {
+  if (status === "released" || status === "funded") return "released";
+  if (status === "active" && deadline && new Date() > deadline) return "expired";
+  if (status === "active") return "active";
+  return status;
 }
 
 export async function GET(request: NextRequest) {
@@ -119,7 +122,7 @@ export async function GET(request: NextRequest) {
         targetAmount: Number(c.targetAmount),
         currentAmount: totalDonated,
         tokenSymbol: "ETH",
-        status: toPublicCampaignStatus(c.campaignStatus),
+        status: toPublicCampaignStatus(c.campaignStatus, c.campaignDeadline),
         createdAt: c.createdAt.toISOString(),
         deadline: c.campaignDeadline ? c.campaignDeadline.toISOString() : null,
         releasedAt:

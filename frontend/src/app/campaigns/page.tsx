@@ -94,6 +94,7 @@ export default function CampaignsPage() {
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
+          <option value="expired">Releasing</option>
           <option value="released">Released</option>
         </select>
 

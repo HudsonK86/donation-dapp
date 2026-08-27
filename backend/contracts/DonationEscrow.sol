@@ -93,6 +93,7 @@ contract DonationEscrow is Ownable, ReentrancyGuard {
     error NotCampaignAdmin(uint256 campaignId);
     error CampaignHasDonations(uint256 campaignId);
     error CampaignCancelledError(uint256 campaignId);
+    error NotBeneficiary(address caller, address beneficiary);
 
     // ============================================================
     //                        CONSTRUCTOR
@@ -198,13 +199,14 @@ contract DonationEscrow is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Claim funds if the deadline has passed, regardless of the target amount.
-     *      Can be called by anyone, but sends funds to the beneficiary.
+     * @dev Claims funds if the deadline has passed, regardless of the target amount.
+     *      Only the beneficiary wallet can call this function.
      * @param _campaignId The ID of the campaign to claim.
      */
     function claimFunds(uint256 _campaignId) external nonReentrant {
         Campaign storage campaign = campaigns[_campaignId];
 
+        if (msg.sender != campaign.beneficiary) revert NotBeneficiary(msg.sender, campaign.beneficiary);
         if (campaign.targetAmount == 0) revert CampaignNotFound(_campaignId);
         if (!campaign.isActive) revert CampaignNotActive(_campaignId);
         if (campaign.isReleased) revert CampaignAlreadyReleased(_campaignId);

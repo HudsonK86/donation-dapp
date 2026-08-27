@@ -3,8 +3,9 @@ import { getAddress, isAddress } from "viem";
 import { prisma } from "@/lib/prisma";
 import { config } from "@/utils/config";
 
-function toPublicCampaignStatus(status: string) {
+function toPublicCampaignStatus(status: string, deadline: Date | null | undefined) {
   if (status === "released" || status === "funded") return "released";
+  if (status === "active" && deadline && new Date() > deadline) return "expired";
   if (status === "active") return "active";
   return status;
 }
@@ -94,7 +95,7 @@ export async function GET(request: Request) {
         ...campaignWithoutDonations,
         targetAmount: Number(targetAmount),
         tokenSymbol: "ETH",
-        campaignStatus: toPublicCampaignStatus(campaign.campaignStatus),
+        campaignStatus: toPublicCampaignStatus(campaign.campaignStatus, campaign.campaignDeadline),
         onChainCampaignId:
           onChainCampaignId != null ? Number(onChainCampaignId) : null,
         currentAmount: totalDonated,

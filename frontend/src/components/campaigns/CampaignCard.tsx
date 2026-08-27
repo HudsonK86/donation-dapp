@@ -122,6 +122,7 @@ function formatDeadline(deadline: string | null | undefined) {
 const statusStyles: Record<string, string> = {
   draft: "bg-slate-500/10 text-slate-500",
   active: "bg-emerald-500/10 text-emerald-600",
+  expired: "bg-amber-500/10 text-amber-600",
   released: "bg-indigo-500/10 text-indigo-600",
   cancelled: "bg-slate-500/10 text-slate-500",
   archived: "bg-slate-500/10 text-slate-500",

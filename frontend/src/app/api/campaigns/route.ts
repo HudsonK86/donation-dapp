@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-function toPublicCampaignStatus(status: string) {
+function toPublicCampaignStatus(status: string, deadline: Date | null | undefined) {
   if (status === "released" || status === "funded") return "released";
+  if (status === "active" && deadline && new Date() > deadline) return "expired";
   if (status === "active") return "active";
   return status;
 }
@@ -33,6 +34,9 @@ export async function GET(request: NextRequest) {
       where.campaignStatus = "active";
     } else if (status === "released") {
       where.campaignStatus = { in: ["released", "funded"] };
+    } else if (status === "expired") {
+      where.campaignStatus = "active";
+      where.campaignDeadline = { lt: new Date() };
     } else {
       where.campaignStatus = { in: ["active", "released", "funded"] };
     }
@@ -104,7 +108,7 @@ export async function GET(request: NextRequest) {
         ...campaignWithoutDonations,
         targetAmount: Number(targetAmount),
         tokenSymbol: "ETH",
-        campaignStatus: toPublicCampaignStatus(c.campaignStatus),
+        campaignStatus: toPublicCampaignStatus(c.campaignStatus, c.campaignDeadline),
         onChainCampaignId: onChainCampaignId != null ? Number(onChainCampaignId) : null,
         currentAmount: totalDonated,
         releasedAt,
