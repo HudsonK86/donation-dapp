@@ -386,6 +386,7 @@ export default function CampaignDetailPage() {
   const isDeadlinePassed = campaign.campaignDeadline
     ? new Date() > new Date(campaign.campaignDeadline)
     : false;
+  const isBeneficiary = address?.toLowerCase() === campaign.beneficiaryWallet?.walletAddress?.toLowerCase();
   const transactionRows = buildTransactionRows(campaign);
   const releasedDateText = transactionRows.find(
     (transaction) => transaction.eventType === "FundsReleased"
@@ -620,8 +621,8 @@ export default function CampaignDetailPage() {
               </div>
             )}
 
-            {/* Claim Funds Form */}
-            {campaign.campaignStatus === "active" && isDeadlinePassed && (
+            {/* Claim Funds Form - Only for Beneficiary */}
+            {campaign.campaignStatus === "expired" && isBeneficiary && (
               <div className="space-y-4">
                 <div className="rounded-lg bg-orange-50 border border-orange-200 p-4 text-center">
                   <p className="text-sm font-medium text-orange-700">⏳ Deadline Passed</p>
@@ -629,7 +630,6 @@ export default function CampaignDetailPage() {
                     This campaign has ended. Funds can now be claimed.
                   </p>
                 </div>
-                {/* Error and success messages handled via toast */}
 
                 <button
                   onClick={handleClaim}
