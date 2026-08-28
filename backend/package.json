@@ -26,6 +26,7 @@
   },
   "type": "module",
   "dependencies": {
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "sol2uml": "^2.5.26"
   }
 }

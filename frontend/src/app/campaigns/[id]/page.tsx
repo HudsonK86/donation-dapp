@@ -621,8 +621,18 @@ export default function CampaignDetailPage() {
               </div>
             )}
 
+            {/* Waiting for Beneficiary to Claim */}
+            {campaign.campaignStatus === "releasing" && !isBeneficiary && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-center">
+                <p className="text-sm font-medium text-amber-700">⏳ Waiting for Beneficiary</p>
+                <p className="text-xs text-amber-600 mt-1">
+                  This campaign has ended. Funds are waiting to be claimed by the beneficiary.
+                </p>
+              </div>
+            )}
+
             {/* Claim Funds Form - Only for Beneficiary */}
-            {campaign.campaignStatus === "expired" && isBeneficiary && (
+            {campaign.campaignStatus === "releasing" && isBeneficiary && (
               <div className="space-y-4">
                 <div className="rounded-lg bg-orange-50 border border-orange-200 p-4 text-center">
                   <p className="text-sm font-medium text-orange-700">⏳ Deadline Passed</p>
@@ -669,12 +679,14 @@ export default function CampaignDetailPage() {
 
 const eventStyles: Record<string, string> = {
   CampaignCreated: "bg-blue-50 text-blue-600",
+  CampaignUpdated: "bg-slate-50 text-slate-600",
   DonationReceived: "bg-emerald-50 text-emerald-600",
   FundsReleased: "bg-indigo-50 text-indigo-600",
 };
 
 const eventLabels: Record<string, string> = {
   CampaignCreated: "Campaign Created",
+  CampaignUpdated: "Campaign Updated",
   DonationReceived: "Donation Received",
   FundsReleased: "Funds Released",
 };

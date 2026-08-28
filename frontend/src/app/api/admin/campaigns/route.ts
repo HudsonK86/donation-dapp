@@ -5,7 +5,7 @@ import { config } from "@/utils/config";
 
 function toPublicCampaignStatus(status: string, deadline: Date | null | undefined) {
   if (status === "released" || status === "funded") return "released";
-  if (status === "active" && deadline && new Date() > deadline) return "expired";
+  if (status === "active" && deadline && new Date() > deadline) return "releasing";
   if (status === "active") return "active";
   return status;
 }

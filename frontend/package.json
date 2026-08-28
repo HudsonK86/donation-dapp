@@ -17,7 +17,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "indexer": "tsx watch scripts/indexer.ts",
-    "indexer:reindex": "tsx scripts/reindex-campaigns.ts"
+    "indexer:reindex": "tsx scripts/reindex-campaigns.ts",
+    "auto:expire": "tsx scripts/auto-expire.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
