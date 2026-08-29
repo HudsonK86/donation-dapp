@@ -4,6 +4,7 @@ import { useAppKitAccount } from "@reown/appkit/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 import { toast } from "react-toastify";
+import { WalletButton } from "@/components/wallet/WalletButton";
 import { config } from "@/utils/config";
 
 interface WalletProfile {
@@ -249,7 +250,7 @@ export function WalletProfilePanel({
                   Your public profile will appear here after your wallet is connected.
                 </p>
               </div>
-              <appkit-button size="sm" />
+              <WalletButton />
             </div>
           </div>
         ) : (

@@ -2,7 +2,7 @@
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
-import { AppKitProvider, createAppKit } from "@reown/appkit/react";
+import { createAppKit } from "@reown/appkit/react";
 import { config as appConfig } from "@/utils/config";
 import {
   appkitNetworks,
@@ -13,21 +13,30 @@ import {
   wagmiConfig,
 } from "@/utils/web3config";
 
+const metadata = {
+  name: appConfig.appName,
+  description: appConfig.appDescription,
+  url:
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://donatechain.asia",
+  icons: [],
+};
+
 createAppKit({
   adapters: [wagmiAdapter],
   projectId,
   networks: appkitNetworks,
   defaultNetwork: donationNetwork,
-  metadata: {
-    name: appConfig.appName,
-    description: appConfig.appDescription,
-    url: "http://localhost:3000",
-    icons: [],
-  },
+  metadata,
   features: {
     analytics: false,
     email: false,
     socials: false,
+  },
+  themeMode: "dark",
+  themeVariables: {
+    "--w3m-accent": "#06b6d4",
   },
 });
 
@@ -37,31 +46,14 @@ export default function Web3Provider({
   children: React.ReactNode;
 }) {
   return (
-    <AppKitProvider
-      adapters={[wagmiAdapter]}
-      projectId={projectId}
-      networks={appkitNetworks}
-      defaultNetwork={donationNetwork}
-      metadata={{
-        name: appConfig.appName,
-        description: appConfig.appDescription,
-        url: "http://localhost:3000",
-        icons: [],
-      }}
-      themeMode="dark"
-      themeVariables={{
-        "--w3m-accent": "#06b6d4",
-      }}
+    <WagmiProvider
+      config={
+        wagmiConfig as unknown as React.ComponentProps<
+          typeof WagmiProvider
+        >["config"]
+      }
     >
-      <WagmiProvider
-        config={
-          wagmiConfig as unknown as React.ComponentProps<
-            typeof WagmiProvider
-          >["config"]
-        }
-      >
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      </WagmiProvider>
-    </AppKitProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </WagmiProvider>
   );
 }

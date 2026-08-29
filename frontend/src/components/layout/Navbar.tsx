@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { WalletButton } from "@/components/wallet/WalletButton";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -42,7 +43,7 @@ export function Navbar() {
 
         {/* Wallet Connect Button — Reown AppKit renders this */}
         <div className="flex items-center gap-3">
-          <appkit-button size="sm" />
+          <WalletButton />
         </div>
       </nav>
     </header>

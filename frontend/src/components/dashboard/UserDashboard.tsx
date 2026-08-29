@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/campaigns/CampaignCard";
 import Link from "next/link";
 import { WalletProfilePanel } from "@/components/dashboard/WalletProfilePanel";
 import { AddressDisplay } from "@/components/ui/AddressDisplay";
+import { WalletButton } from "@/components/wallet/WalletButton";
 import { config } from "@/utils/config";
 import { formatEthAmount } from "@/utils/format";
 
@@ -238,7 +239,7 @@ export function UserDashboard() {
                         <span className="text-4xl">🔗</span>
                         <p className="text-sm">Connect your wallet to view your donation history.</p>
                         <div className="mt-2">
-                          <appkit-button size="sm" />
+                          <WalletButton />
                         </div>
                       </div>
                     </td>
@@ -311,7 +312,7 @@ export function UserDashboard() {
                         <span className="text-4xl">🔗</span>
                         <p className="text-sm">Connect your wallet to view your beneficiary campaigns.</p>
                         <div className="mt-2">
-                          <appkit-button size="sm" />
+                          <WalletButton />
                         </div>
                       </div>
                     </td>
