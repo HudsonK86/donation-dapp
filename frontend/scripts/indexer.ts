@@ -56,16 +56,15 @@ const client = createPublicClient({
 // genuinely missing transactions.
 const MATCH_ATTEMPTS = 60;
 const MATCH_DELAY_MS = 1000; // 60s total window for the slow DB write
+const REPLAY_CHUNK_SIZE = BigInt(2_000);
 
 // For CampaignCreated the frontend POST can take 30+ seconds (image
-// upload + DB write). The retry window above covers only 5 seconds, so we
-// accept the race and instead expose a manual reindex entry point.
+// upload + DB write). Use an extended lookup window, then fall back to the
+// on-chain campaign ID; startup replay provides another recovery path.
 //
 // The indexer will:
-//  1. Try the primary lookup (createTxHash) for the basic retry window.
-//  2. Log the tx hash so the operator can backfill later via the
-//     `npm run indexer:reindex` script beyond `MATCH_ATTEMPTS`.
-//  3. Fall back to on-chain ID lookup so newly-orphaned campaigns are
+//  1. Try the primary lookup (createTxHash) for the extended retry window.
+//  2. Fall back to on-chain ID lookup so newly-orphaned campaigns are
 //     picked up here even if the createTxHash race is lost.
 const EXTENDED_ATTEMPTS = 60;
 const EXTENDED_DELAY_MS = 1000; // 60s total window for the slow DB write
@@ -264,6 +263,7 @@ async function handleCampaignCreated(log: ContractEventLog) {
     }
   } catch (error) {
     console.error("  ❌ Error handling CampaignCreated:", error);
+    throw error;
   }
 }
 
@@ -333,6 +333,7 @@ async function handleCampaignUpdated(log: ContractEventLog) {
     console.log(`  ✅ Indexed CampaignUpdated event for campaign ${campaign.campaignId}`);
   } catch (error) {
     console.error("  ❌ Error handling CampaignUpdated:", error);
+    throw error;
   }
 }
 
@@ -404,6 +405,7 @@ async function handleCampaignCancelled(log: ContractEventLog) {
     console.log(`  ✅ Indexed CampaignCancelled event for campaign ${campaign.campaignId}`);
   } catch (error) {
     console.error("  ❌ Error handling CampaignCancelled:", error);
+    throw error;
   }
 }
 
@@ -443,7 +445,7 @@ async function handleDonationReceived(log: ContractEventLog) {
     await prisma.campaign.update({
       where: { campaignId: campaign.campaignId },
       data: {
-        currentAmountCached: Number(totalDonated) / 1e18, // Convert wei to USDT
+        currentAmountCached: Number(totalDonated) / 1e18, // Convert wei to ETH
       },
     });
 
@@ -477,6 +479,7 @@ async function handleDonationReceived(log: ContractEventLog) {
     console.log(`  ✅ Indexed DonationReceived event, updated cached amount`);
   } catch (error) {
     console.error("  ❌ Error handling DonationReceived:", error);
+    throw error;
   }
 }
 
@@ -547,11 +550,30 @@ async function handleFundsReleased(log: ContractEventLog) {
     console.log(`  ✅ Indexed FundsReleased event, campaign status updated to 'released'`);
   } catch (error) {
     console.error("  ❌ Error handling FundsReleased:", error);
+    throw error;
   }
 }
 
 async function handleDonationEscrowLog(log: Log) {
   try {
+    if (!log.transactionHash || log.logIndex == null) {
+      return;
+    }
+
+    const existingEvent = await prisma.blockchainEvent.findUnique({
+      where: {
+        txHash_logIndex: {
+          txHash: log.transactionHash,
+          logIndex: log.logIndex,
+        },
+      },
+      select: { eventId: true },
+    });
+
+    if (existingEvent) {
+      return;
+    }
+
     const decoded = decodeEventLog({
       abi: DONATION_ESCROW_ABI,
       data: log.data,
@@ -595,7 +617,55 @@ async function handleDonationEscrowLog(log: Log) {
       logIndex: log.logIndex,
       error,
     });
+    throw error;
   }
+}
+
+async function processLogs(logs: Log[]) {
+  const orderedLogs = [...logs].sort((left, right) => {
+    const blockComparison =
+      (left.blockNumber ?? BigInt(0)) - (right.blockNumber ?? BigInt(0));
+    if (blockComparison !== BigInt(0)) {
+      return blockComparison < BigInt(0) ? -1 : 1;
+    }
+    return (left.logIndex ?? 0) - (right.logIndex ?? 0);
+  });
+
+  for (const log of orderedLogs) {
+    await handleDonationEscrowLog(log);
+  }
+}
+
+async function replayUnindexedLogs() {
+  const latestBlock = await client.getBlockNumber();
+  const earliestIndexed = await prisma.blockchainEvent.aggregate({
+    _min: { blockNumber: true },
+  });
+  const startBlock = earliestIndexed._min.blockNumber ?? latestBlock;
+
+  console.log(
+    `🔄 Replaying unindexed logs from block ${startBlock} to ${latestBlock}...`,
+  );
+
+  for (
+    let fromBlock = startBlock;
+    fromBlock <= latestBlock;
+    fromBlock += REPLAY_CHUNK_SIZE
+  ) {
+    const candidateToBlock = fromBlock + REPLAY_CHUNK_SIZE - BigInt(1);
+    const toBlock = candidateToBlock < latestBlock
+      ? candidateToBlock
+      : latestBlock;
+    const logs = await client.getLogs({
+      address: CONTRACT_ADDRESS,
+      fromBlock,
+      toBlock,
+    });
+
+    await processLogs(logs);
+  }
+
+  console.log("✅ Historical event replay complete.");
 }
 
 // ============================================================
@@ -608,12 +678,21 @@ async function startIndexer() {
   console.log(`   RPC: ${RPC_URL}`);
   console.log("");
 
+  await replayUnindexedLogs();
+
   // Watch raw contract logs and decode them with the ABI. This is more robust
   // when the contract emits multiple events in one transaction.
   client.watchEvent({
     address: CONTRACT_ADDRESS,
     onLogs: (logs) => {
-      void Promise.all(logs.map(handleDonationEscrowLog));
+      void processLogs(logs).catch((error) => {
+        console.error("❌ Live event processing failed:", error);
+        process.exit(1);
+      });
+    },
+    onError: (error) => {
+      console.error("❌ Event watcher failed:", error);
+      process.exit(1);
     },
   });
 
